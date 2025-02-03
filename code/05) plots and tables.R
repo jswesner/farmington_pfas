@@ -335,6 +335,8 @@ ggsave(plot_ttf, file = "plots/plot_ttf.jpg", width = 7, height = 8)
 
 # sum pfas ----------------------------------------------------------------
 
+posts_taxon = readRDS(file = "posteriors/posts_taxon.rds")
+
 raw_sum_pfas_overall = merged_d2 %>% 
   as_tibble() %>% 
   group_by(type, site, order, sample_id) %>% 
@@ -349,7 +351,7 @@ posts_sumpfas = posts_taxon %>%
   # group_by(type, .draw, order) %>% # average over sites
   # reframe(.epred = mean(.epred)) %>%
   group_by(type, site, .draw, order) %>% # sum pfas
-  reframe(.epred = mean(.epred)) %>%
+  reframe(.epred = sum(.epred)) %>%
   group_by(type, .draw, order) %>% 
   reframe(.epred = median(.epred))
 
@@ -357,7 +359,7 @@ plot_sum_pfas_overall = posts_sumpfas %>%
   ggplot(aes(x = reorder(type, order),
              y = .epred)) + 
   stat_pointinterval(size = 0.4) +
-  scale_y_log10() +
+  scale_y_log10(labels = comma) +
   labs(y = "\u2211PFAS (ppb)",
        x = "") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0)) +
@@ -365,9 +367,19 @@ plot_sum_pfas_overall = posts_sumpfas %>%
 
 plot_sum_pfas_overall
 
-
 ggsave(plot_sum_pfas_overall, file = "plots/plot_sum_pfas.jpg", width = 8, height = 5)
 
+sum_pfas_table = posts_sumpfas %>% 
+  mutate(type = fct_reorder(type, order)) %>% 
+  group_by(type) %>% 
+  median_qi(.epred) %>% 
+  select(-.width, -.point, -.interval) %>% 
+  rename(median = .epred,
+         low95 = .lower, 
+         high95 = .upper) %>% 
+  mutate(units = "sum_ppb")
+
+write_csv(sum_pfas_table, file = "tables/sum_pfas_table.csv")
 
 posts_sumpfas_site = posts_taxon %>% 
   # filter(.draw ==222) %>%
@@ -376,11 +388,12 @@ posts_sumpfas_site = posts_taxon %>%
   # group_by(type, .draw, order) %>% # average over sites
   # reframe(.epred = mean(.epred)) %>%
   group_by(type, site, .draw, order) %>% # sum pfas
-  reframe(.epred = mean(.epred)) %>% 
+  reframe(.epred = sum(.epred)) %>% 
   group_by(type, site, order) %>% 
   median_qi(.epred) %>%
   mutate(site = as.factor(site),
-         site = fct_relevel(site, "Hop Brook", "Russell Brook", "Ratlum Brook", "Burr Pond Brook", "Pequabuck River"))
+         site = fct_relevel(site, "Hop Brook", "Russell Brook", "Ratlum Brook", "Burr Pond Brook", "Pequabuck River"),
+         type = fct_reorder(type, order))
 
 plot_sum_pfas_bysite = posts_sumpfas_site %>% 
   ggplot(aes(x = reorder(type, order),
@@ -388,16 +401,16 @@ plot_sum_pfas_bysite = posts_sumpfas_site %>%
   geom_pointrange(aes(ymin = .lower,ymax = .upper)) +
   geom_line(aes(group = site)) +
   facet_wrap(~site, nrow = 1) +
-  scale_y_log10() +
+  scale_y_log10(labels = comma, breaks = c(0.01, 0.1, 1, 10, 100, 1000)) +
   labs(y = "\u2211PFAS (ppb)",
        x = "") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0)) +
   NULL
 
-
 ggsave(plot_sum_pfas_bysite, file = "plots/plot_sum_pfas_bysite.jpg", width = 8, height = 5)
 
 
+write_csv(posts_sumpfas_site, file = "tables/sum_pfas_table_bysite.csv")
 
 library(patchwork)
 
