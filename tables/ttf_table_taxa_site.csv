@@ -1,0 +1,56 @@
+category,pfas_type,baf_biof_ephem,baf_detr_pleco,baf_sest_trich,site
+PFCAs,PFDA,2.1 (0 to 538.1),346 (1.1 to 246083.4),7.4 (0 to 5756.5),Hop Brook
+PFCAs,PFDA,2.2 (0 to 492.8),NA,0.5 (0 to 22.4),Pequabuck River
+PFCAs,PFDA,0.8 (0 to 182.2),157.4 (0.5 to 43578.3),0.3 (0 to 20.3),Ratlum Brook
+PFCAs,PFDA,NA,432.4 (5.2 to 43309.8),0.7 (0 to 30.5),Burr Pond Brook
+PFCAs,PFDA,NA,NA,41.2 (0.8 to 2306.7),Russell Brook
+PFCAs,PFDoA,3.8 (0 to 376),449.4 (1.2 to 1551387.4),7 (0 to 2488.9),Hop Brook
+PFCAs,PFDoA,3.7 (0 to 391.4),NA,0.4 (0 to 31.8),Pequabuck River
+PFCAs,PFDoA,1.1 (0 to 144.7),163.2 (0.8 to 70406.1),0.2 (0 to 21.3),Ratlum Brook
+PFCAs,PFDoA,NA,596.5 (12.7 to 95475.1),0.6 (0 to 46.6),Burr Pond Brook
+PFCAs,PFDoA,NA,NA,35.3 (0.3 to 2352.7),Russell Brook
+PFCAs,PFHpA,2.5 (0 to 1090.6),6.6 (0 to 12115.5),8.5 (0.1 to 8879),Hop Brook
+PFCAs,PFHpA,2.9 (0 to 783.1),NA,0.6 (0 to 59.9),Pequabuck River
+PFCAs,PFHpA,0.9 (0 to 312.2),3.8 (0 to 1447.2),0.3 (0 to 47.1),Ratlum Brook
+PFCAs,PFHpA,NA,39.1 (0 to 12094.5),0.9 (0 to 95),Burr Pond Brook
+PFCAs,PFHpA,NA,NA,48 (1.8 to 5229.1),Russell Brook
+PFCAs,PFHxA,1.8 (0 to 167.5),3.1 (0 to 787.9),2.4 (0 to 668.5),Hop Brook
+PFCAs,PFHxA,2.3 (0 to 119.9),NA,0.2 (0 to 2.1),Pequabuck River
+PFCAs,PFHxA,0.6 (0 to 41.9),1.3 (0 to 111),0.1 (0 to 1.6),Ratlum Brook
+PFCAs,PFHxA,NA,14.6 (0 to 464.1),0.3 (0 to 4.3),Burr Pond Brook
+PFCAs,PFHxA,NA,NA,7.7 (1.1 to 101.4),Russell Brook
+PFCAs,PFNA,1.6 (0 to 114.7),41.9 (0.3 to 6645.7),8.7 (0.1 to 1329.1),Hop Brook
+PFCAs,PFNA,1.6 (0 to 89.2),NA,0.5 (0.1 to 7.2),Pequabuck River
+PFCAs,PFNA,0.5 (0 to 42.2),17.3 (0.3 to 587.9),0.3 (0 to 4.7),Ratlum Brook
+PFCAs,PFNA,NA,30.7 (4 to 413.3),0.8 (0.1 to 14.5),Burr Pond Brook
+PFCAs,PFNA,NA,NA,16.7 (2.4 to 219),Russell Brook
+PFCAs,PFOA,151.5 (17.5 to 994.8),735.7 (8.4 to 225089.6),5.4 (0.1 to 1095.1),Hop Brook
+PFCAs,PFOA,34.3 (14.5 to 87.3),NA,0.4 (0.1 to 1.7),Pequabuck River
+PFCAs,PFOA,16.8 (4.7 to 70.1),122 (2.8 to 15224.1),0.3 (0 to 2.6),Ratlum Brook
+PFCAs,PFOA,NA,42.9 (2.9 to 3513.6),0.6 (0.1 to 4.8),Burr Pond Brook
+PFCAs,PFOA,NA,NA,3.6 (1 to 25.7),Russell Brook
+PFCAs,PFUnA,1.4 (0 to 143.9),200.8 (0.4 to 100709.7),23.4 (0.2 to 15151.7),Hop Brook
+PFCAs,PFUnA,2 (0 to 59.5),NA,1.5 (0.1 to 66.3),Pequabuck River
+PFCAs,PFUnA,0.5 (0 to 19.5),76.9 (0.2 to 12616.2),0.8 (0 to 53.1),Ratlum Brook
+PFCAs,PFUnA,NA,99.8 (3 to 11488.4),2 (0.1 to 86.7),Burr Pond Brook
+PFCAs,PFUnA,NA,NA,22.3 (1.3 to 964.8),Russell Brook
+PFSAs,PFBS,2.4 (0 to 3967),9.3 (0 to 10544),7.6 (0 to 5997.8),Hop Brook
+PFSAs,PFBS,2.3 (0 to 2351.2),NA,0.5 (0 to 117.9),Pequabuck River
+PFSAs,PFBS,0.8 (0 to 946),4.3 (0 to 3081.3),0.3 (0 to 36.4),Ratlum Brook
+PFSAs,PFBS,NA,70.5 (0 to 16966.6),0.7 (0 to 100),Burr Pond Brook
+PFSAs,PFBS,NA,NA,61 (0.6 to 4980.7),Russell Brook
+PFSAs,PFHxS,2 (0 to 903.1),46.6 (0.1 to 45101.7),2.8 (0 to 1885.4),Hop Brook
+PFSAs,PFHxS,2.2 (0 to 548.6),NA,0.2 (0 to 24.4),Pequabuck River
+PFSAs,PFHxS,0.7 (0 to 204.8),24.1 (0 to 7777.4),0.1 (0 to 18.4),Ratlum Brook
+PFSAs,PFHxS,NA,152.3 (2.2 to 17025.8),0.3 (0 to 27),Burr Pond Brook
+PFSAs,PFHxS,NA,NA,10.7 (0.2 to 1652.5),Russell Brook
+PFSAs,PFOS,12.1 (4.9 to 31.3),53.9 (8.9 to 1467.4),12.5 (1.1 to 683.2),Hop Brook
+PFSAs,PFOS,11.9 (6 to 23.5),NA,1.5 (0.7 to 3.1),Pequabuck River
+PFSAs,PFOS,2.5 (1.2 to 5.6),16.9 (6 to 52.4),1.9 (0.9 to 4.9),Ratlum Brook
+PFSAs,PFOS,NA,30.9 (14.3 to 64.3),2.6 (1.3 to 5.3),Burr Pond Brook
+PFSAs,PFOS,NA,NA,4.9 (2.5 to 9.8),Russell Brook
+FTSA,6:2FTS,1.6 (0 to 1506.4),9.8 (0 to 13806.9),15.6 (0.1 to 18106.1),Hop Brook
+FTSA,6:2FTS,1.9 (0 to 959.5),NA,1.2 (0 to 137.7),Pequabuck River
+FTSA,6:2FTS,0.6 (0 to 194.5),4.2 (0 to 1810),0.6 (0 to 78.3),Ratlum Brook
+FTSA,6:2FTS,NA,71.2 (0.1 to 17391.7),1.9 (0 to 260),Burr Pond Brook
+FTSA,6:2FTS,NA,NA,81.5 (2.1 to 9468.5),Russell Brook
