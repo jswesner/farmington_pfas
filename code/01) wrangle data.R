@@ -4,7 +4,6 @@ library(tidybayes)
 library(here)
 library(janitor)
 
-
 # load data
 merged_d <- read_csv(here("data/PFAS_merged_d.csv")) %>% 
   mutate(Site = as.factor(Site),

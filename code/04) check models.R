@@ -3,6 +3,7 @@ library(brms)
 library(tidybayes)
 
 hg4_taxon = readRDS(file = "models/hg4_taxon.rds")
+old_hg4_taxon = readRDS(file = "models/old/hg4_taxon.rds")
 
 merged_d2 = readRDS("data/merged_d2.rds") %>% 
   mutate(type_taxon = sample_type) %>% 
@@ -12,6 +13,8 @@ merged_d2 = readRDS("data/merged_d2.rds") %>%
   mutate(conc_ppb_s = conc_ppb/max(conc_ppb))
 
 pp_check(hg4_taxon) + scale_x_log10()
+# compare to the original hg4_taxon
+# pp_check(readRDS(file = "models/old/hg4_taxon.rds")) + scale_x_log10()
 
 test = plot(conditional_effects(hg4_taxon), points = T)
 
@@ -29,8 +32,8 @@ post = hg4_taxon$data %>%
 
 post %>% 
   ggplot(aes(x = type_taxon, y = .epred)) +
-  geom_pointrange(aes(y = .epred, ymin = .lower, ymax = .upper)) +
+  geom_pointrange(aes(y = .epred + 1e-05, ymin = .lower, ymax = .upper)) +
   facet_wrap(~site) +
-  scale_y_log10() +
+  scale_y_log10(limits = c(1e-05, 1e+03)) +
   geom_point(data = merged_d2, aes(y = conc_ppb)) +
   theme(axis.text.x = element_text(angle = 90))

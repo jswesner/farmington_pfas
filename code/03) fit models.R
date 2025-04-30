@@ -8,24 +8,26 @@ merged_d2 = readRDS("data/merged_d2.rds") %>%
   mutate(conc_ppb_s = conc_ppb/max(conc_ppb))
 
 # fit model
-hg4 = readRDS(file = "models/hg4.rds")
+# hg4 = readRDS(file = "models/hg4.rds")
+# 
+# hg4_taxon <- brm(bf(conc_ppb_s ~ type_taxon + (1 + type_taxon|site) + (1 + type_taxon|pfas_type),
+#               hu ~ type_taxon + (1 + type_taxon|site) + (1 + type_taxon|pfas_type)),
+#            data = merged_d2, 
+#            family = hurdle_gamma(link = "log"),
+#            prior=c(prior(normal(0,1), class = Intercept), # -5,2
+#                    prior(normal(0,0.5), class = b), # was (0,2), then (0,0.1), then (0,0.5)
+#                    prior(normal(0,1), class = b, dpar = hu),
+#                    prior(normal(-1.5, 1), class = Intercept, dpar= hu)), # was (-2,1), then (-1.5,1)
+#            iter = 2000 , chains = 4, cores = 4,
+#            seed = 5, 
+#            # save_pars = save_pars(all = TRUE),
+#            data2 = list(max_conc_ppb = unique(merged_d2$max_conc)))
+# 
+# saveRDS(hg4_taxon, file = "models/hg4_taxon.rds")
 
-hg4_taxon <- brm(bf(conc_ppb_s ~ type_taxon + (1 + type_taxon|site) + (1 + type_taxon|pfas_type),
-              hu ~ type_taxon + (1 + type_taxon|site) + (1 + type_taxon|pfas_type)),
-           data = merged_d2, 
-           family = hurdle_gamma(link = "log"),
-           prior=c(prior(normal(0,1), class = Intercept), # -5,2
-                   prior(normal(0,0.5), class = b), # was (0,2), then (0,0.1), then (0,0.5)
-                   prior(normal(0,1), class = b, dpar = hu),
-                   prior(normal(-1.5, 1), class = Intercept, dpar= hu)), # was (-2,1), then (-1.5,1)
-           iter = 2000 , chains = 4, cores = 4,
-           seed = 5, 
-           # save_pars = save_pars(all = TRUE),
-           data2 = list(max_conc_ppb = unique(merged_d2$max_conc)))
+# hg4_taxon = readRDS(file = "models/hg4_taxon.rds")
 
-saveRDS(hg4_taxon, file = "models/hg4_taxon.rds")
-
-hg4_taxon = readRDS(file = "models/hg4_taxon.rds")
+hg4_taxon = update(hg4_taxon, newdata = merged_d2)
 
 # sum pfas ----------------------------------------------------------------
 merged_d = readRDS("data/full_data.rds") %>% 

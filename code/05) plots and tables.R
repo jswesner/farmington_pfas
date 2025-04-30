@@ -38,17 +38,18 @@ mod_dat = hg4_taxon$data %>%
                                       type == "Tetragnathidae" ~ 8)) %>% 
   mutate(conc_ppb = conc_ppb_s*max_conc)
 
-posts_taxon = mod_dat  %>% 
-  select(-contains("conc_ppb")) %>% 
-  distinct() %>% 
+posts_taxon = mod_dat  %>%
+  select(-contains("conc_ppb")) %>%
+  distinct() %>%
   add_epred_draws(hg4_taxon, re_formula = NULL, dpar = T) %>%
   mutate(.epred = .epred*max_conc)
 
 saveRDS(posts_taxon, file = "posteriors/posts_taxon.rds")
+posts_taxon = readRDS(file = "posteriors/posts_taxon.rds")
 
 posts_taxon_type = posts_taxon %>% 
   group_by(type, site, pfas_type, order, .draw) %>% 
-  reframe(.epred = mean(.epred))
+  reframe(.epred = median(.epred))
 
 posts_taxa_only = posts_taxon %>% 
   filter(!is.na(taxon)) 
@@ -87,11 +88,6 @@ pfas_concentration_bysite = mod_dat %>%
 ggsave(pfas_concentration_bysite, file = "plots/pfas_concentration_bysite.jpg", width = 8, height = 8)
 
 
-
-# partitioning coefficients -----------------------------------------------
-
-
-
 # get transfer factors ------------------
 posts_ttf = posts_taxon_type %>% 
   ungroup %>% 
@@ -116,7 +112,7 @@ posts_ttf %>%
 
 ttf_table_notaxa = posts_ttf %>% 
   group_by(draw, name, pfas_type) %>% 
-  reframe(value = mean(value)) %>% 
+  reframe(value = median(value)) %>% 
   group_by(name, pfas_type) %>% 
   median_qi(value, .width = 0.75) %>% 
   mutate(value = round(value, 1)) %>% 
@@ -151,8 +147,8 @@ ttf_table_taxa = posts_taxon %>%
          d_baf_biofilm_ttf = value/biofilm,
          e_baf_detritus_ttf = value/detritus,
          f_baf_seston_ttf = value/seston,
-         # g_mtf_ttf = emergent_trichoptera/value,
-         # h_ttf_ttf = tetragnathidae/value
+         g_mtf_ttf = emergent_trichoptera/value,
+         h_ttf_ttf = tetragnathidae/value
          ) %>% 
   pivot_longer(cols = ends_with("ttf"), names_to = "transfer_factor",
                values_to = "transfer_value") %>% 
@@ -211,7 +207,7 @@ posts_ttf_site = posts_taxon_type %>%
 
 ttf_table_notaxa_site = posts_ttf %>% 
   group_by(draw, name, pfas_type, site) %>% 
-  reframe(value = mean(value)) %>% 
+  reframe(value = median(value)) %>% 
   group_by(name, pfas_type, site) %>% 
   median_qi(value, .width = 0.95) %>% 
   mutate(value = round(value, 1)) %>% 
@@ -307,31 +303,126 @@ ttf_site_all = left_join(ttf_table_notaxa_site, ttf_table_taxa_site) %>%
 write_csv(ttf_site_all, file = "tables/ttf_site_all.csv")
 
 
+# taxon ttf and mtf -------------------------------------------------------
+
+ttf_full_table = posts_taxon %>% 
+  # filter(site == "Russell Brook") %>%
+  # filter(pfas_type == "PFOS") %>%
+  filter(.draw <= 100) %>%
+  ungroup %>% 
+  select(type, site, pfas_type, .draw, .epred, taxon) %>% 
+  mutate(type = paste0(type, "_", taxon)) %>% 
+  select(-taxon) %>% 
+  mutate(type = str_remove(type, "_NA"),
+         type = str_to_lower(type)) %>% 
+  pivot_wider(names_from = type, values_from = .epred) %>% 
+  mutate(ttf_diptera = emergent_diptera/tetragnathidae,
+         ttf_ephem = emergent_ephemeroptera/tetragnathidae,
+         ttf_odonata = emergent_odonata/tetragnathidae,
+         ttf_plecoptera = emergent_plecoptera/tetragnathidae,
+         ttf_trichoptera = emergent_trichoptera/tetragnathidae) %>% 
+  pivot_longer(cols = starts_with("ttf")) %>% 
+  group_by(.draw, pfas_type, name) %>% 
+  reframe(median = median(value, na.rm = T)) %>% 
+  group_by(pfas_type, name) %>% 
+  reframe(mean = mean(median),
+          sd = sd(median))
+
+ttf_full_table_csv = ttf_full_table %>% 
+  mutate(across(where(is.numeric), round, 1)) %>% 
+  unite("mean_sd", mean:sd, sep = " +/- ") %>% 
+  pivot_wider(names_from = name, values_from = mean_sd) %>% 
+  mutate(pfas_type = fct_relevel(pfas_type, "PFHxA", "PFHpA", "PFOA",
+                                 "PFNA", "PFUnA", "PFDA", "PFDoA", "PFHxS", "PFOS", 
+                                 "6:2 FTS")) %>% 
+  arrange(pfas_type)
+
+write_csv(ttf_full_table_csv, file = "tables/ttf_full_table_csv.csv")
+
+posts_taxon %>% 
+  # filter(site == "Russell Brook") %>%
+  # filter(pfas_type == "PFOS") %>%
+  filter(.draw <= 500) %>%
+  ungroup %>% 
+  select(type, site, pfas_type, .draw, .epred, taxon) %>% 
+  mutate(type = paste0(type, "_", taxon)) %>% 
+  select(-taxon) %>% 
+  mutate(type = str_remove(type, "_NA"),
+         type = str_to_lower(type)) %>% 
+  pivot_wider(names_from = type, values_from = .epred) %>% 
+  mutate(ttf_diptera = emergent_diptera/tetragnathidae,
+         ttf_ephem = emergent_ephemeroptera/tetragnathidae,
+         ttf_odonata = emergent_odonata/tetragnathidae,
+         ttf_plecoptera = emergent_plecoptera/tetragnathidae,
+         ttf_trichoptera = emergent_trichoptera/tetragnathidae) %>% 
+  pivot_longer(cols = starts_with("ttf")) %>% 
+  group_by(.draw, pfas_type, name) %>% 
+  reframe(median = median(value, na.rm = T)) %>% 
+  group_by(pfas_type, name) %>% 
+  reframe(mean = mean(median),
+          sd = sd(median))
+
 
 # plot_ttf ----------------------------------------------------------------
 
-
-plot_ttf = posts_ttf %>% 
+raw_ttf = as_tibble(mod_dat) %>% 
+  select(-conc_ppb_s) %>%
+  group_by(type, pfas_type, site) %>% 
+  reframe(conc_ppb = mean(conc_ppb, na.rm = T)) %>%
+  pivot_wider(names_from = type, values_from = conc_ppb) %>% 
+  clean_names()  %>%
+  group_by(pfas_type, site) %>% 
+  mutate(a_kd_sediment_ttf = sediment/water,
+         b_kd_biofilm_ttf = biofilm/water,
+         a2_kd_seston_ttf = seston/water,
+         b2_kd_detritus_ttf = detritus/water,
+         c_baf_sediment_ttf = larval/sediment,
+         d_baf_biofilm_ttf = larval/biofilm,
+         e_baf_detritus_ttf = larval/detritus,
+         f_baf_seston_ttf = larval/seston,
+         g_mtf_ttf = emergent/larval,
+         h_ttf_ttf = tetragnathidae/emergent) %>% 
+  pivot_longer(cols = ends_with("ttf"))  %>%
+  mutate(across(where(is.numeric), ~ na_if(., 0))) %>%
+  mutate(across(where(is.numeric), ~ na_if(., Inf))) %>%
+  mutate(across(where(is.numeric), ~ ifelse(is.nan(.), NA, .)))
+  
+  
+posts_ttf_summary = posts_ttf %>% 
   group_by(draw, name, pfas_type) %>% 
-  reframe(value = mean(value)) %>% 
-  ggplot(aes(y = name, x = value, color = pfas_type)) + 
-  stat_pointinterval() + 
+  reframe(value = median(value)) %>% 
+  group_by(name, pfas_type) %>%
+  median_qi(value)
+
+raw_nas_for_color = raw_ttf %>% 
+  group_by(pfas_type, name) %>% 
+  mutate(alpha = case_when(is.na(value) ~ "no raw data (estimate entirely from the priors/hierarcical effects)",
+                           TRUE ~ "raw data (estimate from data and model)")) %>% 
+  distinct(pfas_type, name, alpha)
+
+plot_ttf = posts_ttf_summary %>% 
+  left_join(raw_nas_for_color) %>% 
+  ggplot(aes(x = name, y = value, color = pfas_type)) + 
+  # stat_pointinterval() + 
+  geom_pointrange(aes(ymin = .lower, ymax = .upper, alpha = alpha), size = 0.2) +
   facet_wrap(~pfas_type) +
+  geom_point(data = raw_ttf, color = "black", size = 0.4) +
   # scale_color_brewer() +
-  scale_x_log10(label = comma,
-                limits = c(0.1, 1e5)) + 
+  scale_y_log10(label = c("0.01", "0.1", "1", "10", "100", "1,000", "10,000"), breaks = c(0.01, 0.1, 1, 10, 100, 1000, 10000)) + 
   guides(color = "none") +
-  labs(x = "Trophic Transer Factor",
-       y = "Matrix",
+  labs(y = "Trophic Transer Factor or Partitioning Coefficient",
+       x = "Matrix",
        caption = "Figure X. Posterior distribution of trophic transfer factors (TTF)") +
-  geom_vline(aes(xintercept = 1), linetype = "dotted") +
+  geom_hline(aes(yintercept = 1), linetype = "dotted") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1,
                                    vjust = 1)) +
-  coord_flip() +
+  guides(alpha = "none") +
   NULL
 
-ggsave(plot_ttf, file = "plots/plot_ttf.jpg", width = 7, height = 8)
+ggsave(plot_ttf, file = "plots/plot_ttf.jpg", width = 7, height = 7)
 
+plot_ttf_remove = plot_ttf + scale_alpha_manual(values = c(0, 1))
+ggsave(plot_ttf_remove, file = "plots/plot_ttf_remove.jpg", width = 7, height = 7)
 
 # sum pfas ----------------------------------------------------------------
 
@@ -347,9 +438,9 @@ raw_sum_pfas_overall = merged_d2 %>%
 posts_sumpfas = posts_taxon %>% 
   # filter(.draw ==222) %>%
   # group_by(type, site, pfas_type, .draw, order) %>% # average over taxa
-  # reframe(.epred = mean(.epred)) %>%
+  # reframe(.epred = median(.epred)) %>%
   # group_by(type, .draw, order) %>% # average over sites
-  # reframe(.epred = mean(.epred)) %>%
+  # reframe(.epred = median(.epred)) %>%
   group_by(type, site, .draw, order) %>% # sum pfas
   reframe(.epred = sum(.epred)) %>%
   group_by(type, .draw, order) %>% 
@@ -384,9 +475,9 @@ write_csv(sum_pfas_table, file = "tables/sum_pfas_table.csv")
 posts_sumpfas_site = posts_taxon %>% 
   # filter(.draw ==222) %>%
   # group_by(type, site, pfas_type, .draw, order) %>% # average over taxa
-  # reframe(.epred = mean(.epred)) %>%
+  # reframe(.epred = median(.epred)) %>%
   # group_by(type, .draw, order) %>% # average over sites
-  # reframe(.epred = mean(.epred)) %>%
+  # reframe(.epred = median(.epred)) %>%
   group_by(type, site, .draw, order) %>% # sum pfas
   reframe(.epred = sum(.epred)) %>% 
   group_by(type, site, order) %>% 
@@ -430,7 +521,7 @@ posts_taxon %>%
              y = .epred)) + 
   stat_pointinterval() +
   scale_y_log10() +
-  geom_jitter(data = raw_sum_pfas, aes(y = conc_ppb),
+  geom_jitter(data = raw_sum_pfas_overall, aes(y = conc_ppb),
               size = 0.8, shape = 1, width = 0.1, height = 0) +
   labs(y = "\u2211PFAS (ppb)",
        x = "") +
@@ -489,3 +580,4 @@ proportion_overall_plot = proportion_overall %>%
   NULL
 
 ggsave(proportion_overall_plot, file = "plots/proportion_overall.jpg", width = 4, height = 3.5)
+
