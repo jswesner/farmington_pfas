@@ -1,0 +1,12 @@
+---
+title: "analysis log"
+output: html_notebook
+---
+
+2025-04-21: We got new data from the analysis lab that gives values even if a sample was below the reporting limit. We will use those data to update the previous analyses, which had all assumed that non-detects were zero (i.e., we had used a hurdle model then). Now we know exactly how many non-detects truly were zeros.
+
+2025-04-25: The code `compare new non_detects.R` brings in the updated data and compares it to the original data (i.e., with the lab-required reporting limits). It shows that the sample structures (e.g., replicates, sites, names of samples, etc) are identical. The less stringent reporting limits not added ~60 non-zero values (i.e., before those were coded as non-detect zeros. Now they have concentrations). Most of the data are still zeros (2205 zeros and 633 non-zeros), so we'll use the hurdle model still.
+
+2025-04-26: We re-ran hg4_taxon.rds in the cluster with the new data. It took 15.5 hours to run using a setting of 8 cores, 2000 iterations and 12 threads (I'm not sure if the cluster allowed that many cores though).
+
+2025-04-30: I replotted and made new tables that contain results from the new analysis in model hg4_taxon.rds. The new tables look similar for pfas types that had lots of data to begin with (e.g., PFOS), but need to check numbers for data-poor categories. For example, previous partitioning coefficients for some pfas types were in the 10000's, but are now in the 100's. Need to check if the difference is due to more data in those specific categories.
