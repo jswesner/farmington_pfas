@@ -1184,8 +1184,8 @@ prob_detect_average_spider_emerge = post_hus %>%
   geom_label(data = prob_labels_spider_emerge, aes(label = pfas_type, fill = pfas_type), 
              color = "white", size = 3) +
   scale_fill_custom() +
-  labs(x = "Probability of Detection in Tetragnathidae Insects",
-       y = "Probability of Detection in Emergent Insects")
+  labs(y = "Probability of Detection in Tetragnathid Spiders",
+       x = "Probability of Detection in Emergent Insects")
 
 
 # prob_detect_by site 
@@ -1216,8 +1216,8 @@ prob_detect_site_spider_emerge = post_hus_site %>%
              color = "white", 
              size = 2) +
   scale_fill_custom() +
-  labs(x = "Probability of Detection in Tetragnathid Spiders",
-       y = "Probability of Detection in Emergent Insects")
+  labs(y = "Probability of Detection in Tetragnathid Spiders",
+       x = "Probability of Detection in Emergent Insects")
 
 
 library(cowplot)
