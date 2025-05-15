@@ -1,0 +1,29 @@
+type,pfas_type,pfas_name,no_carbons,chem_formula,log_kpw,log_kmw,cas,lod_Waters (ng mL-1),lod_Solids (ng g-1)
+PFCAs,PFBA,Perfluorobutanoic acid,4*,C3F7COOH,0.82,1.63 ± 0.193,375-22-4,0.0010-0.0044,0.27
+PFCAs,PFPeA,Perfluoropentanoic acid,5*,C4F9COOH,1.33,2.02 ± 0.149,2706-90-3,0.0014-0.0048,0.042
+PFCAs,PFHxA,Perfluorohexanoic acid,6*,C5F11COOH,1.85,2.42 ± 0.156,307-24-4,0.0026,0.49
+PFCAs,PFHpA,Perfluoroheptanoic acid,7*,C6F13COOOH,2.48,2.85 ± 0.115,375-85-9,0.0018,0.49
+PFCAs,PFOA,Perfluorooctanoic acid,8^,C7F15COOH,2.98,3.28 ± 0.135,335-67-1,0.0018,0.49
+PFCAs,PFNA,Perfluorononanoic acid,9^,C8F17COOH,3.49,3.75 ± 0.163,375-95-1,0.0036,0.91
+PFCAs,PFDA,Perfluorodecanoic acid,10^,C9F19COOH,4.01,4.18 ± 0.213,3335-76-2,0.0046,0.69
+PFCAs,PFUnA,Perfluoroundecanoic acid,11^,C10F21COOH,4.53,4.5 ± 0.215,2058-94-8,0.003,1.1
+PFCAs,PFDoA,Perfluorododecanoic acid,12^,C11F23COOH,5.04,4.82 ± 0.1,307-55-1,0.0022,1.07
+PFCAs,PFTrDA,Perfluorotridecanoic acid,13^,C12F25COOH,5.56,5.11 ±  0.187,72629-94-8,0.0046,2.05
+PFCAs,PFTA,Perfluorotetradecanoic acid,14^,C13F27COOH,6.07,5.36 ± 0.241,376-06-7,0.0016,2
+PFSAs,PFBS,Perfluorobutanesulfonic acid,4*,C4F9SO3H,0.13,2.72 ± 0.308,375-73-5,0.0021,0.27
+PFSAs,PFPeS,Perfluoropentanesulfonic acid,5*,C5F11SO3H,-,3.16 ± 0.127,2706-91-4,0.0010-0.0021,0.21
+PFSAs,PFHxS,Perfluorohexanesulfonic acid,6^,C6F13SO3H,1.28,3.65 ± 0.115,355-46-4,0.0032,0.2
+PFSAs,PFHpS,Perfluoroheptanesulfonic acid,7^,C7F15SO3H,1.78,4.09 ± 0.174,375-92-8,0.0010-0.0031,0.31
+PFSAs,PFOS,Perfluorooctanesulfonic acid,8^,C8F17SO3H,2.29,4.5 ± 0.145,1763-23-1,0.0023,0.35
+PFSAs,PFNS,Perfluorononanesulfonic acid,9^,C9F19SO3H,2.8,4.82 ± 0.179,68259-12-1,0.0024-0.0072,0.72
+PFSAs,PFDS,Perfluorodecanesulfonic acid,10^,C10F21SO3H,3.32,5.15 ± 0.224,335-77-3,0.0025-0.0075,0.75
+Perfluoroalkane sulfonoamido substances,N-EtFOSAA,N-Ethyl perfluorooctane sulfonamidoacetic acid,12,C12H8F17NO4S,4.28,4.4 ± 0.153,2991-50-6,0.0028,2.17
+Perfluoroalkane sulfonoamido substances,N-MeFOSAA,N-Methyl perfluorooctane sulfonamidoacetic acid,11,C11H6F17NO4S,3.86,4.21 ± 0.179,2355-31-9,0.0024,5.81
+PFECA,GenX (HFPO-DA),Hexafluoropropylene oxide dimer acid,6,C6HF11O3,2.01,2.07 ± 0.129,13252-13-6,0.0021,1.7
+PFECA,ADONA,"4,8-Dioxa-3H-perfluorononanoic acid",7,C7H2F12O4,0.86,2.07,919005-14-4,0.0026,0.23
+PFESA,9Cl-PF3ONS,9-Chlorohexadecafluoro-3-oxanonane1- sulfonic acid,8,C8HClF16O4S,-,4.38 ± 0.191,756426- 58- 1,0.0018,0.27
+PFESA,11Cl-PF3OUdS,11-Chloroeicosafluoro-3-oxaundecane1- sulfonic acid,10,C10HClF20O4S,-,4.75 ± 0.263,763051- 92- 9,0.0028,0.38
+FASA,PFOSA,Perfluorooctanesulfonamide,8,C8H2F17NO2S,2.82,3.91 ± 0.162,754-91-6,0.0012-0.0036,0.36
+FTSA,4:2 FTS,"1H,1H, 2H, 2H-Perfluorohexane sulfonic acid",6,C6H5F9O3S,0.77,2.21 ± 0.132,757124-72- 4,0.0068-0.025,2.05
+FTSA,6:2 FTS,"1H,1H, 2H, 2H-Perfluorooctane sulfonic acid",8,C8H5F13O3S,1.8,3.12 ± 0.135,27619-97-2,0.0090-0.0269,2.69
+FTSA,8:2 FTS,"1H,1H, 2H, 2H-Perfluorodecane sulfonic acid",10,C10H5F17O3S,2.81,4.07 ± 0.264,39108-34-4,0.0075-0.0225,2.25

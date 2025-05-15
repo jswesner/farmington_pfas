@@ -5,20 +5,11 @@ library(tidybayes)
 hg4_taxon = readRDS(file = "models/hg4_taxon.rds")
 old_hg4_taxon = readRDS(file = "models/old/hg4_taxon.rds")
 
-merged_d2 = readRDS("data/merged_d2.rds") %>% 
-  mutate(type_taxon = sample_type) %>% 
-  separate(sample_type, into = c('type', 'taxon')) %>% 
-  group_by(type_taxon) %>% 
-  mutate(max_conc = max(conc_ppb, na.rm = T)) %>% 
-  mutate(conc_ppb_s = conc_ppb/max(conc_ppb))
+merged_d2 = readRDS("data/merged_d2.rds") 
 
 pp_check(hg4_taxon) + scale_x_log10()
 # compare to the original hg4_taxon
 # pp_check(readRDS(file = "models/old/hg4_taxon.rds")) + scale_x_log10()
-
-test = plot(conditional_effects(hg4_taxon), points = T)
-
-test$type_taxon + scale_y_log10()
 
 post = hg4_taxon$data %>% 
   select(-conc_ppb_s) %>% 

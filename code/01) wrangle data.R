@@ -1,14 +1,20 @@
 library(brms)
 library(tidyverse)
 library(tidybayes)
-library(here)
 library(janitor)
 
 # load data
-merged_d <- read_csv(here("data/PFAS_merged_d.csv")) %>% 
+log_kmw = read_csv("data/log_kw.csv") %>% 
+  mutate(pfas_type = str_remove(pfas_type, " ")) %>% 
+  mutate(log_kmw_mean = parse_number(str_sub(log_kmw, 1, 4)),
+         log_kmw_sd = parse_number(str_sub(log_kmw, -4, -1)),
+         log_kpw_mean = parse_number(log_kpw))
+
+merged_d <- read_csv("data/PFAS_merged_d.csv") %>% 
   mutate(Site = as.factor(Site),
          PFAS_type = as.factor(PFAS_type)) %>% 
-  clean_names()
+  clean_names() %>% 
+  left_join(log_kmw %>% select(pfas_type, log_kmw_mean, log_kmw_sd, log_kpw))
 
 saveRDS(merged_d, file = "data/full_data.rds")
 
@@ -30,7 +36,45 @@ xxx %>%
 
 # filter for these compounds
 merged_d2 <- merged_d %>% 
-  filter(pfas_type == '6:2FTS' | pfas_type == 'PFBS' | pfas_type == 'PFDA' | pfas_type == 'PFDoA' | pfas_type == 'PFHpA' | pfas_type == 'PFHxA' | pfas_type == 'PFHxS' | pfas_type == 'PFNA' | pfas_type == 'PFOA' | pfas_type == 'PFOS' | pfas_type == 'PFUnA') %>%
-  droplevels()
+  filter(pfas_type == '6:2FTS' | pfas_type == 'PFBS' | pfas_type == 'PFDA' | 
+           pfas_type == 'PFDoA' | pfas_type == 'PFHpA' | pfas_type == 'PFHxA' | 
+           pfas_type == 'PFHxS' | pfas_type == 'PFNA' | pfas_type == 'PFOA' | 
+           pfas_type == 'PFOS' | pfas_type == 'PFUnA' |pfas_type == '8:2FTS') %>%
+  droplevels() %>% 
+  mutate(log_kmw_mean_s = scale(log_kmw_mean)) %>% 
+  mutate(type_taxon = sample_type) %>% 
+  separate(sample_type, into = c('type', 'taxon')) %>% 
+  mutate(max_conc = max(conc_ppb, na.rm = T)) %>% 
+  mutate(conc_ppb_s = conc_ppb/max(conc_ppb)) %>% 
+  mutate(order = case_when(type == "Water" ~ 1,
+                           type == "Sediment" ~ 2,
+                           type == "Biofilm" ~ 5,
+                           type == "Detritus" ~ 3,
+                           type == "Seston" ~ 4,
+                           type == "Larval" ~ 6,
+                           type == "Emergent" ~ 7,
+                           type == "Tetragnathidae" ~ 8))
 
 saveRDS(merged_d2, file = "data/merged_d2.rds")
+
+merged_d2_unfiltered <- merged_d %>% 
+  # filter(pfas_type == '6:2FTS' | pfas_type == 'PFBS' | pfas_type == 'PFDA' | 
+  #          pfas_type == 'PFDoA' | pfas_type == 'PFHpA' | pfas_type == 'PFHxA' | 
+  #          pfas_type == 'PFHxS' | pfas_type == 'PFNA' | pfas_type == 'PFOA' | 
+  #          pfas_type == 'PFOS' | pfas_type == 'PFUnA' |pfas_type == '8:2FTS') %>%
+  droplevels() %>% 
+  mutate(log_kmw_mean_s = scale(log_kmw_mean)) %>% 
+  mutate(type_taxon = sample_type) %>% 
+  separate(sample_type, into = c('type', 'taxon')) %>% 
+  mutate(max_conc = max(conc_ppb, na.rm = T)) %>% 
+  mutate(conc_ppb_s = conc_ppb/max(conc_ppb)) %>% 
+  mutate(order = case_when(type == "Water" ~ 1,
+                           type == "Sediment" ~ 2,
+                           type == "Biofilm" ~ 5,
+                           type == "Detritus" ~ 3,
+                           type == "Seston" ~ 4,
+                           type == "Larval" ~ 6,
+                           type == "Emergent" ~ 7,
+                           type == "Tetragnathidae" ~ 8))
+
+saveRDS(merged_d2_unfiltered, file = "data/merged_d2_unfiltered.rds")

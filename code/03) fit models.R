@@ -1,11 +1,7 @@
 library(tidyverse)
 library(brms)
 # load data
-merged_d2 = readRDS("data/merged_d2.rds") %>% 
-  mutate(type_taxon = sample_type) %>% 
-  separate(sample_type, into = c('type', 'taxon')) %>% 
-  mutate(max_conc = max(conc_ppb, na.rm = T)) %>% 
-  mutate(conc_ppb_s = conc_ppb/max(conc_ppb))
+merged_d2 = readRDS("data/merged_d2.rds")
 
 # fit model
 # hg4 = readRDS(file = "models/hg4.rds")
@@ -27,43 +23,91 @@ merged_d2 = readRDS("data/merged_d2.rds") %>%
 
 # hg4_taxon = readRDS(file = "models/hg4_taxon.rds")
 
-hg4_taxon = update(hg4_taxon, newdata = merged_d2)
+hg4_taxon = update(hg4_taxon, newdata = merged_d2, iter = 2000 , chains = 4, cores = 4)
+hg4_taxon_unfiltered = update(hg4_taxon, 
+                              newdata = readRDS("data/merged_d2_unfiltered.rds"), 
+                              iter = 500 , chains = 1, cores = 4,
+                              data2 = list(merged_d2_unfiltered = readRDS("data/merged_d2_unfiltered.rds")))
 
 # sum pfas ----------------------------------------------------------------
 merged_d = readRDS("data/full_data.rds") %>% 
   separate(sample_type, into = c('type', 'taxon'))
 
-d2_sum = merged_d %>% 
-  group_by(site, type) %>% 
-  reframe(sum_ppb = sum(conc_ppb)) %>%
-  mutate(sum_ppb_1 = sum_ppb + 0.01) %>% 
-  group_by(type) %>%
-  mutate(mean_sum_ppb_1 = mean(sum_ppb_1, na.rm = T),
-         mean_sum_ppb = mean(sum_ppb, na.rm = T),
-         sum_ppb_s_1 = sum_ppb_1/mean_sum_ppb_1,
-         sum_ppb_s = sum_ppb/mean_sum_ppb)
+d2_sum = merged_d2 %>%
+  group_by(sample_id, site, type) %>% 
+  reframe(sum_ppb = sum(conc_ppb)) %>% 
+  mutate(mean_sum_ppb = mean(sum_ppb, na.rm = T),
+         sum_ppb_s = sum_ppb/mean_sum_ppb,
+         sum_ppb_s_01 = sum_ppb_s + 0.01)
 
 
-d2_sum %>% 
-  ggplot(aes(x = type, y = sum_ppb_s_1)) + 
-  geom_point() 
-
-mod1 = brm(sum_ppb_s_1 ~ type + (1 + type|site),
+mod1 = brm(sum_ppb_s_01 ~ type + (1 + type|site),
            family = Gamma(link = "log"),
-           prior = c(prior(normal(1, 0.5), class = "Intercept"),
+           prior = c(prior(normal(0, 1), class = "Intercept"),
                      prior(normal(0, 1), class = "b"),
                      prior(exponential(2), class = "sd")),
-           data = d2_sum, cores = 4)
+           data = d2_sum, cores = 4, 
+           data2 = list(raw_data = d2_sum))
 
 saveRDS(mod1, file = "models/mod1.rds")
 
 
-d2_max = merged_d2 %>% 
-  mutate(conc_ppb_s = conc_ppb/max(conc_ppb))
+d2_sum_taxa = merged_d2 %>%
+  filter(!is.na(taxon)) %>% 
+  group_by(sample_id, site, type, taxon) %>% 
+  reframe(sum_ppb = sum(conc_ppb)) %>% 
+  mutate(mean_sum_ppb = mean(sum_ppb, na.rm = T),
+         sum_ppb_s = sum_ppb/mean_sum_ppb,
+         sum_ppb_s_01 = sum_ppb_s + 0.01)
 
-mod2 = brm(sum_ppb_s_1 ~ type + (1 + type|site),
-           family = Gamma(link = "log"),
-           prior = c(prior(normal(1, 0.5), class = "Intercept"),
-                     prior(normal(0, 1), class = "b"),
-                     prior(exponential(2), class = "sd")),
-           data = d2_sum, cores = 4)
+
+mod1_taxa = update(mod1, 
+                   formula = sum_ppb_s_01 ~ type + (1 + type|site) + (1 + type|taxon),
+                   newdata = d2_sum_taxa,
+           data2 = list(raw_data = d2_sum_taxa))
+
+saveRDS(mod1_taxa, file = "models/mod1_taxa.rds")
+
+
+# log_kmw -----------------------------------------------------------------
+# fits baf vs log_kmw. This data is created in 05) plots and tables...
+posts_taxon_kmw_mean = readRDS(file = "posteriors/posts_taxon_kmw.rds") %>% 
+  # group_by(site, name) %>% 
+  # mutate(max_value = max(value),
+  #        value = value/max_value) %>% 
+  # group_by(log_kmw_mean, log_kmw_sd, name, draw) %>% 
+  # reframe(value = mean(value, na.rm = T)) %>% 
+  group_by(name, site) %>%
+  mutate(mean_value = mean(value),
+         value = value/mean_value) %>% 
+  ungroup() %>% 
+  group_by(log_kmw_mean, log_kmw_sd, name, site, mean_value) %>% 
+  reframe(baf_mean = mean(value),
+          baf_sd = sd(value)) %>% 
+  mutate(log_kmw_mean_s = scale(log_kmw_mean),
+         baf_site = paste(name, site, sep = "_")) 
+
+posts_taxon_kmw_mean %>% 
+  ggplot(aes(x = log_kmw_mean_s, y = baf_mean, color = site)) + 
+  geom_pointrange(aes(ymin = baf_mean - baf_sd, ymax = baf_mean + baf_sd)) +
+  facet_wrap(~name, scales = "free") +
+  scale_y_log10() +
+  geom_smooth() +
+  NULL
+
+brm_kmw = brm(baf_mean ~ s(log_kmw_mean_s, by = name) + (1|site),
+              chains = 4, 
+              iter = 2000,
+              cores = 4,
+              family = Gamma(link = "log"),
+              # prior = c(prior(normal(2.7, 2), class = "Intercept")),
+              data = posts_taxon_kmw_mean,
+              data2 = list(mean_kmw = attributes(posts_taxon_kmw_mean$log_kmw_mean_s)$'scaled:center',
+                           sd_kmw = attributes(posts_taxon_kmw_mean$log_kmw_mean_s)$'scaled:scale', 
+                           mean_y = posts_taxon_kmw_mean %>% ungroup %>% distinct(mean_value, name, site, baf_site)))
+
+saveRDS(brm_kmw, file = "models/brm_kmw.rds")
+
+pp_check(brm_kmw) + scale_x_log10()
+
+
