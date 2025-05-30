@@ -593,7 +593,7 @@ posts_taxon_kmw_summary = posts_taxon_kmw %>%
 
 posts_taxon_kmw_adults = posts_baf %>%
   left_join(log_kmw %>% select(pfas_type, starts_with("log_kmw_"), log_kpw_mean,
-                               number_carbons, pfas_category, site)) %>% 
+                               number_carbons, pfas_category)) %>% 
   # filter(draw <= 10) %>% 
   left_join(raw_data_ids, by = c("site", "pfas_type", "name")) 
 
@@ -606,7 +606,7 @@ posts_taxon_kmw_summary_adults = posts_taxon_kmw_adults %>%
 
 baf_logkmw = posts_taxon_kmw_summary %>% 
   ggplot(aes(x = log_kmw_mean, y = value, color = site)) + 
-  # geom_pointrange(aes(ymin = .lower, ymax = .upper)) +
+  geom_pointrange(aes(ymin = .lower, ymax = .upper)) +
   # geom_line() +
   geom_smooth(se = F) +
   geom_point() +
@@ -718,6 +718,64 @@ plot_sum_pfas_overall = posts_sumpfas_summary %>%
 
 ggsave(plot_sum_pfas_overall, file = "plots/plot_sum_pfas.jpg", width = 8, height = 5)
 
+
+# sum pfas by pfas type ---------------------------------------------------
+# this is to compare to the sum pfas plot overall. It's really just the 
+# concentrations of individual pfas, but plotted to compare to sum pfas
+
+posts_taxon_type_summary_withsum = posts_taxon_type_summary %>% 
+  bind_rows(posts_sumpfas_summary %>% 
+              mutate(pfas_type = "\u2211PFAS (ppb)")) 
+
+plot_sum_pfas_per_pfas = mod_dat %>% 
+  ggplot(aes(x = reorder(type, order), y = conc_ppb + 1)) + 
+  # geom_jitter(width = 0.2, height = 0, alpha = 0.6, shape = 1,
+  #             size = 0.3) +
+  geom_pointrange(data = posts_taxon_type_summary_withsum, aes(y = .epred + 1, 
+                                                       ymin = .lower + 1,
+                                                       ymax = .upper + 1,
+                                                       color = pfas_type), 
+                  size = 0.1) +
+  geom_line(data = posts_taxon_type_summary_withsum %>% 
+              mutate(group = "lines") %>% 
+              filter(type %in% c("Water", "Sediment", "Larval", "Emergent", "Tetragnathidae")),
+            aes(group = group, y = .epred + 1),
+            linetype = "dashed") +
+  geom_line(data = posts_taxon_type_summary_withsum %>% 
+              mutate(group = "lines") %>% filter(type %in% c("Water", "Detritus", "Larval", "Emergent", "Tetragnathidae")),
+            aes(group = group, y = .epred + 1),
+            linetype = "dotted") +
+  geom_line(data = posts_taxon_type_summary_withsum %>% 
+              mutate(group = "lines") %>% filter(type %in% c("Water", "Seston", "Larval", "Emergent", "Tetragnathidae")),
+            aes(group = group, y = .epred + 1),
+            linetype = "dotdash") +
+  geom_line(data = posts_taxon_type_summary_withsum %>% 
+              mutate(group = "lines") %>% filter(type %in% c("Water", "Biofilm", "Larval", "Emergent", "Tetragnathidae")),
+            aes(group = group, y = .epred + 1)) +
+  # scale_fill_viridis_d(begin = 0.3) +
+  scale_y_log10(breaks = c(1, 10, 100), 
+                labels = c("0", "10", "100")) +
+  # facet_wrap(pfas_category~reorder(pfas_type, number_carbons)) +
+  facet_wrap2(~pfas_type) +
+  scale_color_custom() +
+  labs(y = "PFAS Concentration (ppb)",
+       x = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.3,
+                                   size = 9),
+        strip.text = element_text(size = 9)) +
+  guides(color = "none") +
+  NULL
+
+ggsave(plot_sum_pfas_per_pfas, 
+       file = "plots/plot_sum_pfas_per_pfas.jpg", 
+       width = 6.5, height = 9)
+
+
+library(cowplot)
+
+plot_grid(plot_sum_pfas_overall,
+          plot_sum_pfas_per_pfas,
+          align = "h", axis = "bt")
 
 # sum pfas site -------------------------------------------------------
 mod1 = readRDS(file = "models/mod1.rds")
