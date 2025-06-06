@@ -9,21 +9,38 @@ library(ggthemes)
 isotopes = read_excel("data/MergedDataFile_Farmington Stable Isotopes 2022-2023.xlsx", 
                        sheet = "Merged Data Sheet") %>% 
   clean_names() %>% 
-  filter(media == "Invertebrate") %>% 
-  group_by(site) %>%
+  filter(media != "Sediment") %>% 
+  filter(media != "Detritus") %>%
+  filter(!is.na(d15n)) %>% 
+  mutate(original_d15n = d15n) %>% 
+  mutate(lifestage = case_when(family != "Spider" ~ lifestage)) %>% 
+  mutate(d15n = case_when(lifestage == "Adult" ~ d15n - 1, TRUE ~ d15n)) %>% # correct adult enrichment due to metamorphosis (Kraus et al. 2014 EST)
+  group_by(site) %>% 
   mutate(d15n_s = scale(d15n),
          mean_15n = mean(d15n, na.rm = T),
-         sd_15n = sd(d15n, na.rm = T)) %>% 
-  ungroup
+         sd_15n = sd(d15n, na.rm = T),
+         mean_centered_15n = d15n - mean_15n) %>% 
+  ungroup %>% 
+  rename(taxon = family,
+         type = lifestage) %>% 
+  mutate(taxon = case_when(is.na(taxon) ~ media, TRUE ~ taxon),            # make the names match with pfas data for combining later
+         type = case_when(type == "Adult" ~ "Emergent", TRUE ~ type)) %>% 
+  mutate(type_taxon = paste0(type, "_", taxon),
+         type_taxon = str_remove(type_taxon, "NA_"),
+         type_taxon = case_when(type_taxon == "Emergent_Spider" ~ "Tetragnathidae", TRUE ~ type_taxon))
 
 brm_isotopes = readRDS(file = "models/brm_isotopes.rds")
 
 
-# bivariate plot ----------------------------------------------------------
+# data plots ----------------------------------------------------------
+
+isotopes %>% 
+  pivot_longer(cols = c(d15n, original_d15n)) %>%
+  ggplot(aes(x = taxon, color = name, y = value)) + 
+  geom_point(position = position_dodge(width = 0.2)) +
+  facet_wrap(~site)
 
 isotope_quick_plot = isotopes %>% 
-  filter(family != "Spider") %>% 
-  filter(lifestage != "Larval") %>% 
   ggplot(aes(x = d13c, y = d15n)) + 
   geom_point(aes(color = family)) +
   geom_mark_ellipse() +
@@ -34,66 +51,54 @@ isotope_quick_plot = isotopes %>%
   xlim(-40, -20) +
   scale_color_colorblind()
 
-
 ggsave(isotope_quick_plot, file = "plots/isotope_quick_plot.jpg", width = 6.5, height = 4)
+
+raw_n15 = isotopes %>% 
+  group_by(type_taxon) %>% 
+  mutate(median = median(mean_centered_15n)) %>% 
+  ggplot(aes(x = reorder(taxon, median),
+             y = mean_centered_15n,
+             color = taxon)) + 
+  geom_point() +
+  labs(y = "\u03b4 15N",
+       x = "") +
+  guides(color = "none") +
+  facet_wrap(~site) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.4, hjust = 0))
+
+ggsave(raw_n15, file = "plots/raw_n15.jpg", width = 6.5, height = 4)
 
 # fit model ---------------------------------------------------------------
 
-# brm_isotopes = brm(d15n_s ~ family + (1|site) + (1|lifestage),
-#                    family = gaussian(),
-#                    prior = c(prior(normal(0, 1), class = Intercept),
-#                              prior(normal(0, 1), class = b),
-#                              prior(exponential(2), class = sd)),
-#                    data = isotopes)
+brm_isotopes = brm(mean_centered_15n ~ taxon + (1 + taxon|site),
+                   family = gaussian(),
+                   prior = c(prior(normal(0, 1), class = Intercept),
+                             prior(normal(0, 1), class = b),
+                             prior(exponential(2), class = sd)),
+                   data = isotopes)
 
-# saveRDS(brm_isotopes, file = "models/brm_isotopes.rds")
-# brm_isotopes = readRDS(file = "models/brm_isotopes.rds")
-# plot(conditional_effects(brm_isotopes), points = T)
+saveRDS(brm_isotopes, file = "models/brm_isotopes.rds")
+plot(conditional_effects(brm_isotopes), points = T)
 
 # posteriors --------------------------------------------------------------
 
-posts = isotopes %>%
-  distinct(family, mean_15n, sd_15n, lifestage, site) %>% 
-  add_epred_draws(brm_isotopes, re_formula = ~ (1|site) + (1|lifestage)) %>% 
-  ungroup %>% 
-  # mutate(.epred = (.epred*sd_15n) + mean_15n) %>% 
-  group_by(family, site) %>% 
+iso_posts = isotopes %>%
+  distinct(taxon, mean_15n, site) %>% 
+  rename(center_15n = mean_15n) %>% 
+  add_epred_draws(brm_isotopes, re_formula = ~ NULL) %>% 
+  group_by(taxon) %>% 
   mutate(median = median(.epred))
 
+saveRDS(iso_posts, file = "posteriors/iso_posts.rds")
 
-posts %>% 
-  ggplot(aes(x = reorder(family, median),
-             y = .epred,
-             fill = lifestage)) + 
+iso_posts %>% 
+  group_by(site) %>% 
+  ggplot(aes(x = reorder(taxon, median),
+             y = .epred)) + 
   stat_halfeye() +
   labs(y = "\u03b4 15N",
        x = "") +
   facet_wrap(~site) +
-  geom_point(data = isotopes %>% left_join(posts %>% ungroup %>% distinct(family, median)), 
-             aes(y = d15n_s, 
-                 color = lifestage), 
+  geom_point(data = isotopes %>% left_join(iso_posts %>% ungroup %>% distinct(taxon, median)), 
+             aes(y = mean_centered_15n),
              fill = "white", shape = 21)
-
-iso_post_summaries = posts %>% 
-  filter(lifestage == "Adult") %>% 
-  group_by(family, site) %>% 
-  median_qi(.epred) %>% 
-  rename(delta_n15_s = .epred) %>% 
-  mutate(taxon = family)
-
-
-# regress with PFAS -------------------------------------------------------
-# load PFAS sum posteriors 
-posts_taxon = readRDS("posteriors/posts_taxon.rds")
-
-posts_taxon %>% 
-  filter(!is.na(taxon)) %>% 
-  filter(.draw <= 100) %>% 
-  group_by(type, site, taxon, .draw, order) %>% 
-  reframe(.epred = sum(.epred)) %>% 
-  left_join(iso_post_summaries) %>% 
-  ggplot(aes(x = delta_n15_s, y = .epred)) + 
-  # geom_point() +
-  stat_halfeye(aes(group = delta_n15_s)) +
-  scale_y_log10() +
-  facet_wrap(~site)

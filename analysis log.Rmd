@@ -17,4 +17,45 @@ output: html_notebook
 
 Instead, what we've done is use the hurdle model probabilites as continuous predictors. that way, we calculate the probability of detection in the water vs probability of detection in bugs across posterior itrations. This was cool! We added a 1:1 line and it shows how different pfas have higher or lower probabilites of detection in bugs compared to water, with PFOS falling on the 1:1 line pretty reliably (predictably?). We then repeated it up the food chain, comparing prob in larvae to prob in adults and then prob in adult to prob in spiders. 
 
-2025-05-14: For sum pfas, instead of using the hurdle model to calculate sum pfas, I instead calculated it from the raw data and fit a separate model. this was motivated by the fact that the model predicitons we quite high for the larvae/emergers, likely due to the high uncertainty and skewed gamma distributions at each pfas/taxon/site combination. That meant that the central tendency of sum pfas was higher than expected. When using the raw data, these were tamped down and seemed more in line with reasonable expectations.
+2025-05-14: For sum pfas, instead of using the hurdle model to calculate sum pfas, I instead calculated it from the raw data and fit a separate model. this was motivated by the fact that the model predictions we quite high for the larvae/emergers, likely due to the high uncertainty and skewed gamma distributions at each pfas/taxon/site combination. That meant that the central tendency of sum pfas was higher than expected. When using the raw data, these were tamped down and seemed more in line with reasonable expectations.
+
+2025-05-23: For log_kmw, Jess and I discussed some ways to think about it at SFS in San Juan. First, it seems likely that the overabundance of PFOS in the system makes the regression with baf vs log_kmw weak. That's because >50% of the PFAS is coming from PFOS, which represents just a single log_kmw value. In other words, there might not be enough variation in log_kmw to detect a signal. I tried removing PFOS and re-plotting. It doesn't change.
+
+2025-06-03: From email from Jess on 6/2/2025, we want to calculate body burdens using mass data from Kaitlyn. I've created a script '07) body burden.R'. Questions for now...what units are the masses? I assume they're in mg ww, but waiting on Jess to confirm (UPDATE: Units are grams ww). Otherwise the code is written and should work. Our approach for now is to calculate the mean mass per site per bug per stage and then divide that into the posteriors of concentrations. Concentrations are in ppb, which is the same as ng/g. So we first convert bugs to dry mass (multiply by 0.2) then to g and then divide, yielding ng_per_bug.
+
+2025-06-05: Discussion with Jess via Teams. For isotope-tmf analysis, include adults, biofilm, and spiders. Before we had excluded those and included only the insects. For adults, consider adjusting the N15 using Johanna's published corrections. Also consider mean-centering by site before analysis. That way the analysis measures change in concentration over relative change in n15, thereby accounting for variation in the baseline n15.
+
+Examples of subtracting the mean n15 or c13 to allow across site comparisons:
+
+@article{pastor2014temporal,
+  title={Temporal variability of nitrogen stable isotopes in primary uptake compartments in four streams differing in human impacts},
+  author={Pastor, Ada and Riera, Joan Llu{\'\i}s and Peipoch, Marc and Ca{\~n}as, L{\'\i}dia and Ribot, Miquel and Gacia, Esperan{\c{c}}a and Mart{\'\i}, Eug{\`e}nia and Sabater, Francesc},
+  journal={Environmental science \& technology},
+  volume={48},
+  number={12},
+  pages={6612--6619},
+  year={2014},
+  publisher={ACS Publications}
+}
+
+@article{nigro2017stable,
+  title={Stable isotope analysis as an early monitoring tool for community-scale effects of rat eradication},
+  author={Nigro, Katherine M and Hathaway, Stacie A and Wegmann, Alex S and Miller-ter Kuile, Ana and Fisher, Robert N and Young, Hillary S},
+  journal={Restoration Ecology},
+  volume={25},
+  number={6},
+  pages={1015--1025},
+  year={2017},
+  publisher={Wiley Online Library}
+}
+
+@article{woodland2012incorporating,
+  title={Incorporating temporally dynamic baselines in isotopic mixing models},
+  author={Woodland, Ryan J and Rodr{\'\i}guez, Marco A and Magnan, Pierre and Gl{\'e}met, H{\'e}l{\`e}ne and Cabana, Gilbert},
+  journal={Ecology},
+  volume={93},
+  number={1},
+  pages={131--144},
+  year={2012},
+  publisher={Wiley Online Library}
+}
