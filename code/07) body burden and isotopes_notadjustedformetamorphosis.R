@@ -41,7 +41,10 @@ mean_insect_mass = insect_mass %>%
   group_by(site, order, life_stage) %>% 
   reframe(mean_gdw = mean(0.2*composite_sample_mass_ww, na.rm = T), # 0.2 converts wet to dry mass
           sd_gdw = sd(0.2*composite_sample_mass_ww, na.rm = T)) %>% 
-  rename(taxon = order)
+  rename(taxon = order) %>% 
+  mutate(type = case_when(life_stage == "Adult" ~ "Emergent", T ~ life_stage),
+         type_taxon = paste0(type, "_", taxon)) %>% 
+  mutate(site = case_when(site == "Pequabuck Brook" ~ "Pequabuck River", TRUE ~ site))
 
 hg4_taxon = readRDS(file = "models/hg4_taxon.rds")
 merged_d2 = hg4_taxon$data2$merged_d2
@@ -58,38 +61,58 @@ mean_insect_mass %>%
 
 # estimate body burden ----------------------------------------------------
 
-insect_posts = merged_d2  
+insect_posts = merged_d2 %>% 
   distinct(site, type_taxon, taxon, type, max_conc, pfas_type) %>% 
-  left_join(mean_insect_mass, relationship = "many-to-many") %>% 
+  left_join(mean_insect_mass) %>% 
+  mutate(type = as.factor(type),
+         type = fct_relevel(type, "Larval", "Emergent")) %>% 
   add_epred_draws(hg4_taxon, ndraws = 500) %>% 
   mutate(.epred = .epred*max_conc) 
 
-insect_posts %>% 
-  mutate(ng_per_bug = .epred/mean_gdw) %>% 
-  group_by(site, taxon, type_taxon, type, pfas_type) %>% 
-  median_qi(ng_per_bug) %>% 
-  ggplot(aes(x = type_taxon, y = ng_per_bug, ymin = .lower, ymax = .upper)) +
-  geom_pointrange() +
-  facet_wrap(~pfas_type) +
-  # scale_y_log10() +
-  NULL
-
-
-insect_posts %>% 
-  mutate(ng_per_bug = .epred/mean_gdw) %>% 
+diff_summary = insect_posts %>% 
+  filter(type %in% c("Emergent", "Larval")) %>% 
+  mutate(ng_per_bug = (.epred/mean_gdw)) %>% 
   ungroup %>%
-  # filter(taxon == "Diptera") %>%
-  # distinct(type) %>% 
-  # filter(pfas_type == "PFOS") %>% 
-  select(site, taxon, type, .epred, ng_per_bug) %>% 
-  ggplot(aes(x = taxon, color = type, y = ng_per_bug)) + 
-  # geom_point() +
-  stat_pointinterval() +
-  # geom_boxplot(aes(group = type)) +
-  facet_wrap(~site) +
-  # stat_pointinterval() +
-  scale_y_log10() +
+  select(site, taxon, type, ng_per_bug, .draw, pfas_type) %>%
+  pivot_wider(names_from = type, values_from = ng_per_bug) %>% 
+  group_by(pfas_type) %>% 
+  mutate(diff = Emergent - Larval) %>% 
+  group_by(pfas_type) %>% 
+  mutate(diff = diff) %>% 
+  filter(!is.na(diff)) %>% 
+  # filter(pfas_type == "PFOS") %>%
+  group_by(taxon, .draw, pfas_type) %>% 
+  reframe(diff = mean(diff)) %>% 
+  group_by(taxon, pfas_type) %>% 
+  median_qi(diff, .width = 0.5) %>% 
+  mutate(taxon = as.factor(taxon),
+         taxon = fct_relevel(taxon, "Plecoptera", "Odonata", "Ephemeroptera", "Trichoptera", "Diptera"))
+
+
+change_in_body_burden = diff_summary %>% 
+  ggplot(aes(x = diff, y = pfas_type)) + 
+  geom_point(aes(color = taxon), size = 0.8) + 
+  geom_errorbarh(aes(xmin = .lower, xmax = .upper,
+                     color = taxon), height = 0,
+                 linewidth = 0.2) +
+  # facet_grid2( pfas_type ~ .) +
+  geom_vline(xintercept = 0, linetype = "dotted") +
+  xlim(-2000, 5000) +
+  # guides(color = "none") +
+  scale_color_brewer(type = "qual", palette = 7) +
+  labs(x = "Change in body burden during metamorphosis (ng/individual)",
+       y = "PFAS Compound",
+       color = "") +
+  geom_text(data = tibble(diff = 0, pfas_type = "8:2FTS"),
+            label = "Larvae higher           Adults higher",
+            aes(y = 12.5),
+            size = 2) +
+  theme(legend.text = element_text(size = 8),
+        text = element_text(size = 8)) +
   NULL
+
+ggsave(change_in_body_burden, file = "plots/change_in_body_burden.jpg", 
+       width = 6.5, height = 4)
 
 
 
@@ -175,8 +198,7 @@ sd_conc = attributes(pfas_conc_isotopes_notadjustedformetamorphosis$log10_median
 posts_tmf_iso_summary_notadjustedformetamorphosis = posts_tmf_iso_notadjustedformetamorphosis %>% 
   group_by(mean_n15, site, pfas_type) %>% 
   mutate(.epred_log10 = (.epred*sd_conc) + mean_conc) %>% 
-  median_qi(.epred_log10) %>% 
-  left_join(pfas_conc_isotopes_notadjustedformetamorphosis %>% ungroup %>% distinct(site, pfas_type)) 
+  median_qi(.epred_log10)
   
 brm_tmf_iso_raw_notadjustedformetamorphosis = brm_tmf_iso_notadjustedformetamorphosis$data %>%
   left_join(pfas_conc_isotopes_notadjustedformetamorphosis %>% ungroup %>% distinct(site, pfas_type)) %>% 
@@ -209,7 +231,7 @@ ggsave(plot_tmf_isotopes_notadjustedformetamorphosis, file = "plots/plot_tmf_iso
 
 # slopes ------------------------------------------------------------------
 
-plot_tmf_isotopes2_notadjustedformetamorphosis = posts_tmf_iso_summary_notadjustedformetamorphosis%>% 
+plot_tmf_isotopes2_notadjustedformetamorphosis = posts_tmf_iso_summary_notadjustedformetamorphosis %>% 
   # filter(pfas_type == "6:2FTS") %>% 
   ggplot(aes(x = mean_n15, y = 10^.epred_log10, fill = pfas_type)) +
   geom_ribbon(aes(ymin = 10^.lower, 
@@ -270,6 +292,65 @@ tmf_slopes_notadjustedformetamorphosis = tmf_iso_slopes_notadjustedformetamorpho
 
 ggsave(tmf_slopes_notadjustedformetamorphosis, file = "plots/tmf_slopes_notadjustedformetamorphosis.jpg", width = 6.5, height = 9)
 
+
+# tmf slopes not site specific --------------------------------------------
+tmf_iso_slopes_overall = brm_tmf_iso_notadjustedformetamorphosis$data %>% 
+  distinct(pfas_type) %>% 
+  # expand_grid(mean_n15 = seq(-2, 1.4, length.out = 2)) %>% # 3.4 per mill difference = 1 trophic level. Use -2 and 1.4 to keep within the values of centered n15
+  expand_grid(mean_n15 = seq(0, 1, length.out = 2)) %>% 
+  add_epred_draws(brm_tmf_iso_notadjustedformetamorphosis, 
+                  re_formula = ~ (1 + mean_n15|pfas_type)) %>%
+  ungroup %>% 
+  select(-.row, -.chain, -.iteration) %>% 
+  pivot_wider(names_from = mean_n15, values_from = .epred) %>% 
+  mutate(slope = `1` - `0`,
+         slope = 10^slope)
+
+
+tmf_slopes_overall = tmf_iso_slopes_overall %>% 
+  group_by(pfas_type) %>% 
+  median_qi(slope)
+
+write_csv(tmf_slopes_overall, file = "tables/tmf_slopes_overall.csv")
+
+mean_conc = attributes(pfas_conc_isotopes_notadjustedformetamorphosis$log10_median_conc_s)$`scaled:center`
+sd_conc = attributes(pfas_conc_isotopes_notadjustedformetamorphosis$log10_median_conc_s)$`scaled:scale`
+
+posts_tmf_iso_overall = brm_tmf_iso_notadjustedformetamorphosis$data %>% 
+  distinct(pfas_type) %>% 
+  expand_grid(mean_n15 = seq(-2, 1, length.out = 30)) %>% 
+  add_epred_draws(brm_tmf_iso_notadjustedformetamorphosis, re_formula = ~ (1 + mean_n15|pfas_type)) %>% 
+  mutate(.epred_log10 = (.epred*sd_conc) + mean_conc) %>% 
+  group_by(pfas_type, mean_n15) %>% 
+  median_qi(.epred_log10)
+
+
+plot_tmf_overall = posts_tmf_iso_overall %>% 
+  # filter(pfas_type == "6:2FTS") %>% 
+  ggplot(aes(x = mean_n15, y = .epred_log10, fill = pfas_type)) +
+  geom_ribbon(aes(ymin = .lower, 
+                  ymax = .upper), alpha = 0.3) +
+  geom_line() +
+  scale_fill_custom() + 
+  scale_color_custom() +
+  facet_wrap2(~ pfas_type, nrow = 1) +
+  guides(fill = "none",
+         color = "none") +
+  geom_point(data = brm_tmf_iso_raw_notadjustedformetamorphosis,
+             aes(color = pfas_type),
+             shape = 1,
+             size = 0.5) +
+  scale_x_continuous(breaks = c(-1.5, 0, 1.5)) +
+  theme(strip.text = element_text(size = 6),
+        axis.text.x = element_text(size = 7),
+        axis.title = element_text(size = 7)) +
+  labs(x = expression(paste(delta^{15}, "N (centered)")),
+       y = "PFAS Concentration\n(tissue ppb)") +
+  NULL
+
+
+ggsave(plot_tmf_overall, file = "plots/plot_tmf_overall.jpg",
+       width = 10, height = 2)
 
 # errors in variables ---------------------------------------
 # this was not fitting efficiently - lots of high rhats even with tight priors.
