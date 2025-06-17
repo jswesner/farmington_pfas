@@ -38,7 +38,7 @@ d2_sum = merged_d2 %>%
   reframe(sum_ppb = sum(conc_ppb)) %>% 
   mutate(mean_sum_ppb = mean(sum_ppb, na.rm = T),
          sum_ppb_s = sum_ppb/mean_sum_ppb,
-         sum_ppb_s_01 = sum_ppb_s + 0.01)
+         sum_ppb_s_01 = sum_ppb_s + 0.0001)
 
 
 mod1 = brm(sum_ppb_s_01 ~ type + (1 + type|site),
@@ -58,7 +58,7 @@ d2_sum_taxa = merged_d2 %>%
   reframe(sum_ppb = sum(conc_ppb)) %>% 
   mutate(mean_sum_ppb = mean(sum_ppb, na.rm = T),
          sum_ppb_s = sum_ppb/mean_sum_ppb,
-         sum_ppb_s_01 = sum_ppb_s + 0.01)
+         sum_ppb_s_01 = sum_ppb_s + 0.0001)
 
 
 mod1_taxa = update(mod1, 

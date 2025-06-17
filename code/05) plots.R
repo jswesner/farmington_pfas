@@ -82,10 +82,13 @@ posts_taxon_type = posts_taxon %>%
 posts_taxa_only = posts_taxon %>% 
   filter(!is.na(taxon)) 
 
+# for lines
 posts_taxon_type_summary = posts_taxon_type %>% 
   group_by(type, pfas_type, pfas_category, order, number_carbons) %>% 
   median_qi(.epred) 
 
+
+# pfas concentrations -----------------------------------
 
 pfas_concentration = mod_dat %>% 
   ggplot(aes(x = reorder(type, order), y = conc_ppb + 1)) + 
@@ -105,6 +108,22 @@ pfas_concentration = mod_dat %>%
        x = "") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.3)) +
   guides(color = "none") +
+  geom_line(data = posts_taxon_type_summary %>% 
+              mutate(group = "lines") %>% 
+              filter(type %in% c("Water", "Sediment", "Larval", "Emergent", "Tetragnathidae")),
+            aes(group = group, y = .epred + 1),
+            linetype = "dashed") +
+  geom_line(data = posts_taxon_type_summary %>% 
+              mutate(group = "lines") %>% filter(type %in% c("Water", "Detritus", "Larval", "Emergent", "Tetragnathidae")),
+            aes(group = group, y = .epred + 1),
+            linetype = "dotted") +
+  geom_line(data = posts_taxon_type_summary %>% 
+              mutate(group = "lines") %>% filter(type %in% c("Water", "Seston", "Larval", "Emergent", "Tetragnathidae")),
+            aes(group = group, y = .epred + 1),
+            linetype = "dotdash") +
+  geom_line(data = posts_taxon_type_summary %>% 
+              mutate(group = "lines") %>% filter(type %in% c("Water", "Biofilm", "Larval", "Emergent", "Tetragnathidae")),
+            aes(group = group, y = .epred + 1)) +
   NULL
 
 ggsave(pfas_concentration, file = "plots/pfas_concentration.jpg", width = 6.5, height = 9)
@@ -517,6 +536,124 @@ plot_ttf_remove = plot_ttf + scale_alpha_manual(values = c(0, 1))
 ggsave(plot_ttf_remove, file = "plots/plot_ttf_remove.jpg", width = 7, height = 7)
 
 
+# mef by insect taxon -----------------------------------------------------
+
+raw_mef_pertaxon = as_tibble(mod_dat) %>% 
+  select(-conc_ppb_s) %>%
+  group_by(type, pfas_type, site, taxon) %>% 
+  reframe(conc_ppb = median(conc_ppb, na.rm = T)) %>%
+  pivot_wider(names_from = type, values_from = conc_ppb) %>% 
+  clean_names()  %>%
+  group_by(pfas_type, site, taxon) %>% 
+  mutate(g_mtf_larvae_to_emergent_ttf = emergent/larval) %>% 
+  pivot_longer(cols = ends_with("ttf"))  %>%
+  mutate(across(where(is.numeric), ~ na_if(., 0))) %>%
+  mutate(across(where(is.numeric), ~ na_if(., Inf))) %>%
+  mutate(across(where(is.numeric), ~ ifelse(is.nan(.), NA, .))) %>% 
+  filter(!is.na(taxon)) %>% 
+  filter(taxon != 'Megaloptera') %>%
+  mutate(alpha = case_when(is.na(value) ~ "no raw data (estimate entirely from the priors/hierarcical effects)",
+                           TRUE ~ "raw data (estimate from data and model)")) 
+
+posts_taxon_type_taxa = posts_taxon %>% 
+  # group_by(type, site, pfas_type, order, .draw) %>% 
+  # reframe(.epred = median(.epred)) %>% 
+  left_join(pfas_names) %>% 
+  mutate(pfas_type = reorder(pfas_type, pfas_order)) %>% 
+  left_join(pfas_names)
+
+posts_metamorphic_taxa = posts_taxon_type_taxa %>% 
+  filter(!is.na(taxon)) %>%
+  ungroup %>% 
+  select(type, taxon, site, pfas_type, .draw, .epred, pfas_category) %>% 
+  pivot_wider(names_from = type, values_from = .epred) %>% 
+  clean_names() %>% 
+  mutate(mtf = emergent/larval) 
+
+raw_nas_for_mef = raw_mef_pertaxon %>%
+  mutate(alpha = case_when(is.na(value) ~ "no raw data (estimate entirely from the priors/hierarcical effects)",
+                           TRUE ~ "raw data (estimate from data and model)")) %>% 
+  ungroup %>% 
+  distinct(pfas_type, taxon, alpha) 
+
+mtf_by_taxon_and_pfas = posts_metamorphic_taxa %>% 
+  group_by(taxon, draw, pfas_category, pfas_type) %>% 
+  reframe(mtf = median(mtf, na.rm = T)) %>% 
+  group_by(taxon, pfas_category, pfas_type) %>% 
+  median_qi(mtf) %>% 
+  left_join(raw_nas_for_mef)
+
+mef_by_taxon = mtf_by_taxon_and_pfas %>% 
+  filter(taxon != "Megaloptera") %>% 
+  ggplot(aes(y = mtf, color = pfas_type)) + 
+  geom_pointrange(aes(x = reorder(taxon, -mtf), ymin = .lower, ymax = .upper, alpha = alpha),
+                  size = 0.2) +
+  geom_point(data = raw_mef_pertaxon, aes(x = taxon, y = value),
+             size = 0.2,
+             color = "black") +
+  facet_wrap(~pfas_type) +
+  scale_color_custom() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.2,
+                                   hjust = 1),
+        axis.title.x = element_blank()) +
+  scale_y_log10(label = c("0.0001", "0.01", "1", "100", "10,000"), 
+                breaks = c(0.0001, 0.01, 1, 100, 10000)) + 
+  guides(color = "none",
+         alpha = "none") +
+  labs(y = "Metamorphic Enrichment Factor") +
+  geom_hline(yintercept = 1, linetype = "dotted") 
+
+ggsave(mef_by_taxon, file = "plots/mef_by_taxon.jpg", width = 7, height = 7)
+
+
+mef_by_taxon_short_coords = mtf_by_taxon_and_pfas %>% 
+  filter(taxon != "Megaloptera") %>% 
+  ggplot(aes(x = taxon, y = mtf, color = pfas_type)) + 
+  geom_pointrange(aes(x = reorder(taxon, -mtf), ymin = .lower, ymax = .upper, alpha = alpha),
+                  size = 0.2) +
+  geom_point(data = raw_mef_pertaxon, aes(x = taxon, y = value),
+             size = 0.2,
+             color = "black") +
+  facet_wrap(~pfas_type) +
+  scale_color_custom() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.2,
+                                   hjust = 1),
+        axis.title.x = element_blank()) +
+  scale_y_log10(label = c( "0.01", "0.1", "1", "10", "100"), 
+                breaks = c(0.01,0.1, 1, 10, 100)) + 
+  guides(color = "none",
+         alpha = "none") +
+  labs(y = "Metamorphic Enrichment Factor") +
+  geom_hline(yintercept = 1, linetype = "dotted") +
+  coord_cartesian(ylim = c(0.01, 100))
+
+ggsave(mef_by_taxon_short_coords, file = "plots/mef_by_taxon_short_coords.jpg", width = 7, height = 7)
+
+mef_by_taxon_dataonly = mtf_by_taxon_and_pfas %>% 
+  filter(taxon != "Megaloptera") %>%
+  filter(grepl("estimate from data and model", alpha)) %>% 
+  ggplot(aes(x = taxon, y = mtf, color = pfas_type)) + 
+  geom_pointrange(aes(x = reorder(taxon, -mtf), ymin = .lower, ymax = .upper),
+                  size = 0.2) +
+  geom_point(data = raw_mef_pertaxon %>%
+               filter(grepl("estimate from data and model", alpha)), aes(x = taxon, y = value),
+             size = 0.2,
+             color = "black") +
+  facet_wrap(~pfas_type) +
+  scale_color_custom() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.2,
+                                   hjust = 1),
+        axis.title.x = element_blank()) +
+  scale_y_log10(label = c( "0.01", "0.1", "1", "10", "100"), 
+                breaks = c(0.01,0.1, 1, 10, 100)) + 
+  guides(color = "none",
+         alpha = "none") +
+  labs(y = "Metamorphic Enrichment Factor") +
+  geom_hline(yintercept = 1, linetype = "dotted")
+
+ggsave(mef_by_taxon_dataonly, file = "plots/mef_by_taxon_dataonly.jpg", width = 7, height = 7)
+
+
 # log_kmw -----------------------------------------------------------------
 posts_baf = posts_taxon_type %>% 
   ungroup %>% 
@@ -855,153 +992,105 @@ plot_sum = plot_grid(plot_sum_pfas_overall , plot_sum_pfas_overall_site + guides
                      ncol = 1, rel_heights = c(1, 0.8))
 
 ggsave(plot_sum, file = "plots/plot_sum.jpg", width = 9, height = 9)
-# sum pfas old ----------------------------------------------------------------
 
-# posts_taxon = readRDS(file = "posteriors/posts_taxon.rds")
-# 
-# raw_sum_pfas_overall = merged_d2 %>% 
-#   as_tibble() %>% 
-#   group_by(type, site, order, sample_id) %>% 
-#   reframe(conc_ppb = sum(conc_ppb, na.rm = T)) %>% 
-#   group_by(type, order, sample_id) %>% 
-#   reframe(conc_ppb = median(conc_ppb))
-# 
-# posts_sumpfas = posts_taxon %>% 
-#   # group_by(type, .draw, order, site, taxon) %>% # sum pfas
-#   # reframe(.epred = sum(.epred)) %>% 
-#   group_by(type, .draw, order, site) %>% # sum pfas
-#   reframe(.epred = sum(.epred)) %>% 
-#   group_by(type, order) %>% 
-#   median_qi(.epred) 
-# 
-# line_posts = posts_sumpfas %>% 
-#   group_by(type, order) %>% 
-#   reframe(.epred = median(.epred)) %>% 
-#   mutate(group = "lines")
-# 
-# posts_sumpfas_order = posts_taxon %>% 
-#   filter(!is.na(taxon)) %>% 
-#   group_by(type, .draw, order, site, taxon) %>% # sum pfas
-#   reframe(.epred = sum(.epred)) %>% 
-#   group_by(type, order, taxon) %>% 
-#   median_qi(.epred) 
-# 
-# # plot_sum_pfas_overall = posts_sumpfas %>% 
-# #   ggplot(aes(x = reorder(type, order),
-# #              y = .epred)) + 
-# #   geom_pointrange(size = 0.4, aes(ymin = .lower, ymax = .upper)) +
-# #   scale_y_log10(labels = comma) +
-# #   labs(y = "\u2211PFAS (ppb)",
-# #        x = "") +
-# #   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0),
-# #         legend.position = "top",
-# #         legend.text = element_text(size = 10),
-# #         legend.title = element_blank()) +
-# #   geom_line(data = line_posts %>% filter(type %in% c("Water", "Sediment", "Larval", "Emergent", "Tetragnathidae")),
-# #             aes(group = group),
-# #             linetype = "dashed") +
-# #   geom_line(data = line_posts %>% filter(type %in% c("Water", "Detritus", "Larval", "Emergent", "Tetragnathidae")),
-# #             aes(group = group),
-# #             linetype = "dotted") +
-# #   geom_line(data = line_posts %>% filter(type %in% c("Water", "Seston", "Larval", "Emergent", "Tetragnathidae")),
-# #             aes(group = group),
-# #             linetype = "dotdash") +
-# #   geom_line(data = line_posts %>% filter(type %in% c("Water", "Biofilm", "Larval", "Emergent", "Tetragnathidae")),
-# #             aes(group = group)) +
-# #   geom_jitter(data = posts_sumpfas_order, aes(fill = taxon), 
-# #               width = 0.08, height = 0, shape = 22) +
-# #   scale_fill_viridis_d(begin = 0.3) +
-# #   NULL
-# # 
-# # plot_sum_pfas_overall
-# 
-# ggsave(plot_sum_pfas_overall, file = "plots/plot_sum_pfas.jpg", width = 8, height = 5)
-# 
-# sum_pfas_table = posts_sumpfas %>% 
-#   mutate(type = fct_reorder(type, order)) %>% 
-#   group_by(type) %>% 
-#   median_qi(.epred) %>% 
-#   select(-.width, -.point, -.interval) %>% 
-#   rename(median = .epred,
-#          low95 = .lower, 
-#          high95 = .upper) %>% 
-#   mutate(units = "sum_ppb")
-# 
-# write_csv(sum_pfas_table, file = "tables/sum_pfas_table.csv")
-# 
-# posts_sumpfas_site = posts_taxon %>% 
-#   # filter(.draw ==222) %>%
-#   # group_by(type, site, pfas_type, .draw, order) %>% # average over taxa
-#   # reframe(.epred = median(.epred)) %>%
-#   # group_by(type, .draw, order) %>% # average over sites
-#   # reframe(.epred = median(.epred)) %>%
-#   group_by(type, site, .draw, order) %>% # sum pfas
-#   reframe(.epred = sum(.epred)) %>% 
-#   group_by(type, site, order) %>% 
-#   median_qi(.epred) %>%
-#   mutate(site = as.factor(site),
-#          site = fct_relevel(site, "Hop Brook", "Russell Brook", "Ratlum Brook", "Burr Pond Brook", "Pequabuck River"),
-#          type = fct_reorder(type, order))
-# 
-# 
-# posts_sumpfas_order_site = posts_taxon %>% 
-#   filter(!is.na(taxon)) %>% 
-#   group_by(type, site, .draw, order, taxon) %>% # sum pfas
-#   reframe(.epred = sum(.epred)) %>% 
-#   group_by(type, site, order, taxon) %>% 
-#   median_qi(.epred) %>%
-#   mutate(site = as.factor(site),
-#          site = fct_relevel(site, "Hop Brook", "Russell Brook", "Ratlum Brook", "Burr Pond Brook", "Pequabuck River"),
-#          type = fct_reorder(type, order))
-# 
-# plot_sum_pfas_bysite = posts_sumpfas_site %>% 
-#   ggplot(aes(x = reorder(type, order),
-#              y = .epred)) + 
-#   geom_pointrange(aes(ymin = .lower,ymax = .upper)) +
-#   geom_line(aes(group = site)) +
-#   facet_wrap(~site, nrow = 1) +
-#   scale_y_log10(labels = comma, breaks = c(0.01, 0.1, 1, 10, 100, 1000)) +
-#   labs(y = "\u2211PFAS (ppb)",
-#        x = "",
-#        color = "") +
-#   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0),
-#         legend.position = "top",
-#         legend.text = element_text(size = 8),
-#         legend.title = element_blank()) +
-#   geom_jitter(data = posts_sumpfas_order, aes(fill = taxon), 
-#               shape = 22, width = 0.08, height = 0) +
-#   scale_fill_viridis_d(begin = 0.3) +
-#   NULL
-# 
-# ggsave(plot_sum_pfas_bysite, file = "plots/plot_sum_pfas_bysite.jpg", width = 8, height = 5)
-# 
-# 
-# write_csv(posts_sumpfas_site, file = "tables/sum_pfas_table_bysite.csv")
-# 
-# library(cowplot)
-# 
-# 
-# plot_sum = plot_grid(plot_sum_pfas_overall , plot_sum_pfas_bysite + guides(fill = "none"), 
-#                      ncol = 1, rel_heights = c(1, 0.8))
-# 
-# ggsave(plot_sum, file = "plots/plot_sum.jpg", width = 9, height = 9)
-# 
-# 
-# posts_taxon %>% 
-#   filter(.draw <= 100) %>% 
-#   group_by(type, site, taxon, .draw, order) %>% 
-#   reframe(.epred = sum(.epred)) %>% 
-#   group_by(type, order, .draw) %>% 
-#   reframe(.epred = sum(.epred)) %>% 
-#   ggplot(aes(x = reorder(type, order),
-#              y = .epred)) + 
-#   stat_pointinterval() +
-#   scale_y_log10() +
-#   geom_jitter(data = raw_sum_pfas_overall, aes(y = conc_ppb),
-#               size = 0.8, shape = 1, width = 0.1, height = 0) +
-#   labs(y = "\u2211PFAS (ppb)",
-#        x = "") +
-#   NULL
+
+# sum ttf -----------------------------------------------------------------
+mod1 = readRDS(file = "models/mod1.rds")
+
+# raw ttf sum averaged over sites
+raw_ttf_sum = as_tibble(mod1$data) %>% 
+  mutate(sum_ppb = (sum_ppb_s_01 - 0.0001)*unique(mod1$data2$mean_sum_ppb)) %>% 
+  # mutate(sum_ppb = case_when(sum_ppb < 0 ~ 0, TRUE ~ sum_ppb)) %>% # fixes the issue with back-transforming using -0.01 b/c some posterior estimates are less than that
+  # select(-sum_ppb_s) %>%
+  group_by(type, site) %>% 
+  reframe(sum_ppb = median(sum_ppb, na.rm = T)) %>%
+  pivot_wider(names_from = type, values_from = sum_ppb) %>% 
+  clean_names()  %>%
+  group_by(site) %>% 
+  mutate(a_kd_water_to_sediment_ttf = sediment/water,
+         b_kd_water_to_biofilm_ttf = biofilm/water,
+         a2_kd_water_to_seston_ttf = seston/water,
+         b2_kd_water_to_detritus_ttf = detritus/water,
+         c_baf_sediment_to_larvae_ttf = larval/sediment,
+         d_baf_biofilm_to_larvae_ttf = larval/biofilm,
+         e_baf_detritus_to_larvae_ttf = larval/detritus,
+         f_baf_seston_to_larvae_ttf = larval/seston,
+         g_mtf_larvae_to_emergent_ttf = emergent/larval,
+         h_ttf_emergent_to_spider_ttf = tetragnathidae/emergent) %>% 
+  pivot_longer(cols = ends_with("ttf"))  %>%
+  mutate(across(where(is.numeric), ~ na_if(., 0))) %>%
+  mutate(across(where(is.numeric), ~ na_if(., Inf))) %>%
+  mutate(across(where(is.numeric), ~ ifelse(is.nan(.), NA, .))) 
+
+posts_ttf_sum = mod1$data2 %>% 
+  distinct(type, site, mean_sum_ppb) %>% 
+  add_epred_draws(mod1) %>% 
+  mutate(sum_ppb = (.epred - 0.0001)*mean_sum_ppb) %>% 
+  mutate(sum_ppb = case_when(sum_ppb < 0.000101 ~ 0, TRUE ~ sum_ppb - 0.0001)) %>%
+  ungroup %>% 
+  select(type, site, .draw, sum_ppb) %>% 
+  pivot_wider(names_from = type, values_from = sum_ppb) %>% 
+  clean_names() %>%
+  group_by(site) %>% 
+  mutate(a_kd_water_to_sediment_ttf = sediment/water,
+         b_kd_water_to_biofilm_ttf = biofilm/water,
+         a2_kd_water_to_seston_ttf = seston/water,
+         b2_kd_water_to_detritus_ttf = detritus/water,
+         c_baf_sediment_to_larvae_ttf = larval/sediment,
+         d_baf_biofilm_to_larvae_ttf = larval/biofilm,
+         e_baf_detritus_to_larvae_ttf = larval/detritus,
+         f_baf_seston_to_larvae_ttf = larval/seston,
+         g_mtf_larvae_to_emergent_ttf = emergent/larval,
+         h_ttf_emergent_to_spider_ttf = tetragnathidae/emergent) %>% 
+  pivot_longer(cols = ends_with("ttf")) %>% 
+  select(site, draw, name, value) %>% 
+  group_by(draw, name) %>% 
+  reframe(value = median(value))
+
+saveRDS(posts_ttf_sum, file = "posteriors/posts_ttf_sum.rds")
+
+posts_ttf_summary_sum = posts_ttf_sum %>% 
+  group_by(name) %>%
+  median_qi(value) 
+
+raw_nas_for_color_sum = raw_ttf_sum %>% 
+  group_by(name) %>% 
+  mutate(alpha = case_when(is.na(value) ~ "no raw data (estimate entirely from the priors/hierarcical effects)",
+                           TRUE ~ "raw data (estimate from data and model)")) %>% 
+  distinct(name, alpha) 
+
+matrix_new_sum = posts_ttf_summary_sum %>% ungroup %>% distinct(name) %>% 
+  separate(name, into = c("sort", "coefficient", "source","delete", "recipient", "ttf"), remove = F) %>% 
+  mutate(path = paste0(source," --> ", recipient)) %>% 
+  mutate(coefficient_name = case_when(coefficient == "baf" ~ "BAF", 
+                                      coefficient == "kd" ~ "kd",
+                                      coefficient == "mtf" ~ "MTF",
+                                      coefficient == "ttf" ~ "TTF"),
+         coefficient_name = as.factor(coefficient_name),
+         coefficient_name = fct_relevel(coefficient_name, "kd", "BAF", "MTF", "TTF")) %>% 
+  arrange(sort) %>% 
+  mutate(path_order = 1:nrow(.)) 
+
+plot_ttf_sum = posts_ttf_summary_sum %>% 
+  left_join(raw_nas_for_color_sum) %>% 
+  left_join(matrix_new_sum) %>% 
+  ggplot(aes(x = reorder(path, path_order), y = value)) + 
+  geom_pointrange(aes(ymin = .lower, ymax = .upper), size = 0.2) +
+  geom_point(data = raw_ttf_sum %>% 
+               left_join(matrix_new), color = "black", size = 0.4,
+             shape = 21) +
+  scale_y_log10(label = c("0.01", "0.1", "1", "10", "100", "1,000", "10,000"),
+                breaks = c(0.01, 0.1, 1, 10, 100, 1000, 10000)) +
+  guides(color = "none") +
+  labs(y = "Trophic Transer Factor or Partitioning Coefficient",
+       x = "Matrix") +
+  geom_hline(aes(yintercept = 1), linetype = "dotted") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1,
+                                   vjust = 0.3)) +
+  guides(alpha = "none") +
+  NULL
+
+ggsave(plot_ttf_sum, file = "plots/plot_ttf_sum.jpg", width = 5, height = 5)
 
 
 # proportion pfas ---------------------------------------------------------
@@ -1052,6 +1141,8 @@ proportion_overall = posts_taxon %>%
          ) %>% 
   left_join(pfas_orders) %>% 
   mutate(pfas_type = fct_reorder(pfas_type, order))
+
+saveRDS(proportion_overall, file = "posteriors/proportion_overall.rds")
 
 proportion_overall_plot = proportion_overall %>% 
   ggplot(aes(x = type, y = .epred)) + 

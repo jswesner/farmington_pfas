@@ -1,3 +1,7 @@
+library(tidybayes)
+library(tidyverse)
+library(brms)
+library(janitor)
 
 pfas_names = read_csv("data/log_kw.csv") %>% 
   mutate(pfas_type = str_remove(pfas_type, " ")) %>% 
@@ -213,7 +217,7 @@ mtf_to_keep = tibble(pfas_type = c("PFHxA", "PFHpA", "PFOA", "PFNA", "PFUnA", "P
   mutate(order = 1:nrow(.))
 
 # overall average (all emerged/larval, averaged over sites)
-posts_metamorphic_overall = posts_taxon_type_taxa %>% 
+posts_metamorphic_per_pfas = posts_taxon_type_taxa %>% 
   filter(type == "Emergent" | type == "Larval") %>% 
   ungroup %>% 
   select(type, taxon, site, pfas_type, .draw, .epred, pfas_category) %>% 
@@ -221,14 +225,12 @@ posts_metamorphic_overall = posts_taxon_type_taxa %>%
   clean_names() %>% 
   mutate(mtf = emergent/larval) %>% 
   group_by(pfas_type, pfas_category) %>%
-  mutate(mean = mean(mtf, na.rm = T),
-         sd = sd(mtf, na.rm = T)) %>% 
-  group_by(pfas_category, pfas_type, mean, sd) %>% 
+  group_by(pfas_category, pfas_type) %>% 
   median_qi(mtf, na.rm = T) %>% 
-  mutate(overall = paste0(round(mtf, 1), " (", round(.lower,0), " to ", round(.upper, 0), ")"))  %>% 
-  mutate(mean_sd = paste0(round(mean,0), " \u00b1 ", round(sd, 0)))
+  rename(median = mtf) %>% 
+  mutate(Overall = paste0(round(median, 1), " (", round(.lower,0), " to ", round(.upper, 0), ")")) 
 
-mtf_median_ci = posts_metamorphic_taxa %>% 
+posts_metamorphic_per_pfas_per_taxon = posts_metamorphic_taxa %>% 
   group_by(pfas_category, pfas_type, taxon) %>% 
   median_qi(value) %>% 
   mutate(value = round(value, 1),
@@ -240,22 +242,13 @@ mtf_median_ci = posts_metamorphic_taxa %>%
   left_join(mtf_to_keep) %>% 
   arrange(order) %>% 
   filter(pfas_type %in% c(unique(mtf_to_keep$pfas_type))) %>% 
-  left_join(posts_metamorphic_overall %>% select(pfas_type, overall))
+  left_join(posts_metamorphic_per_pfas_overall %>% select(pfas_type, overall)) %>% 
+  mutate(units = "MTF",
+         description = "mtf for each pfas, averaged over sites.'overall' is averaged over taxa as well",
+         source_code = "06) tables.R ~ lines 230") %>% 
+  select(-pfas_category, -order)
 
-mtf_mean_sd = posts_metamorphic_taxa %>% 
-  group_by(pfas_category, pfas_type, taxon) %>% 
-  reframe(mean = mean(value, na.rm = T),
-          sd = sd(value, na.rm = T)) %>% 
-  mutate(mean_sd = paste0(round(mean,0), " \u00b1 ", round(sd, 0))) %>% 
-  select(pfas_category, pfas_type, taxon, mean_sd)  %>% 
-  pivot_wider(names_from = taxon, values_from = mean_sd) %>% 
-  left_join(mtf_to_keep) %>% 
-  arrange(order) %>% 
-  filter(pfas_type %in% c(unique(mtf_to_keep$pfas_type)))
-
-write_csv(mtf_median_ci, file = "tables/mtf_median_ci.csv")
-write_csv(mtf_mean_sd, file = "tables/mtf_mean_sd.csv")
-
+write_csv(posts_metamorphic_per_pfas_per_taxon, file = "tables/posts_metamorphic_perpfas.csv")
 
 # trophic transfer --------------------------------------------------------
 
@@ -394,7 +387,7 @@ posts_taxa_sumpfas = mod1_taxa$data %>%
                            type == "Tetragnathidae" ~ 8)) %>% 
   add_epred_draws(mod1_taxa, re_formula = ~ (1 + type|taxon)) %>% 
   mutate(.epred = .epred ,
-         .epred = .epred*unique(mod1_taxa$data2$raw_data$mean_sum_ppb))
+         .epred = .epred*unique(mod1_taxa$data2$mean_sum_ppb))
 
 posts_sumpfas = mod1$data %>% 
   distinct(type) %>%
@@ -408,7 +401,7 @@ posts_sumpfas = mod1$data %>%
                            type == "Tetragnathidae" ~ 8)) %>% 
   add_epred_draws(mod1, re_formula = NA) %>% 
   mutate(.epred = .epred ,
-         .epred = .epred*unique(mod1$data2$raw_data$mean_sum_ppb)) 
+         .epred = .epred*unique(mod1$data2$mean_sum_ppb)) 
 
 posts_sumpfas_summary = posts_sumpfas %>% 
   group_by(type, order) %>% 
@@ -425,6 +418,42 @@ sum_pfas_type = posts_sumpfas_summary %>%
   mutate(description = "Median and CrI of sum pfas ppb.")
 
 write.csv(sum_pfas_type, file = "tables/sum_pfas_type.csv")
+
+# sum pfas by type and site --------------------------------------------------------
+
+mod1 = readRDS(file = "models/mod1.rds")
+mod1_taxa = readRDS(file = "models/mod1_taxa.rds")
+
+posts_sumpfas_site = mod1$data %>% 
+  distinct(type, site) %>%
+  mutate(order = case_when(type == "Water" ~ 1,
+                           type == "Sediment" ~ 2,
+                           type == "Biofilm" ~ 5,
+                           type == "Detritus" ~ 3,
+                           type == "Seston" ~ 4,
+                           type == "Larval" ~ 6,
+                           type == "Emergent" ~ 7,
+                           type == "Tetragnathidae" ~ 8)) %>% 
+  add_epred_draws(mod1, re_formula = ~ (1 + type | site)) %>% 
+  mutate(.epred = .epred ,
+         .epred = .epred*unique(mod1_taxa$data2$mean_sum_ppb))
+
+posts_sumpfas_summary_site = posts_sumpfas_site %>% 
+  group_by(type, site) %>% 
+  median_qi(.epred) 
+
+sum_pfas_type_site = posts_sumpfas_summary_site %>%
+  mutate(.epred = round(.epred, 2),
+         .lower = round(.lower, 2),
+         .upper = round(.upper, 2)) %>% 
+  mutate(median_cri = paste0(.epred, " (",.lower, " to ", .upper, ")")) %>% 
+  ungroup %>% 
+  select(type, site, median_cri) %>% 
+  mutate(units = "ppb") %>% 
+  mutate(description = "Median and CrI of sum pfas ppb.")
+
+write.csv(sum_pfas_type_site, file = "tables/sum_pfas_type_site.csv")
+
 
 # sum pfas by order and lifestage -----------------------------------------
 
@@ -443,7 +472,7 @@ posts_taxa_sumpfas = mod1_taxa$data %>%
                            type == "Tetragnathidae" ~ 8)) %>% 
   add_epred_draws(mod1_taxa, re_formula = ~ (1 + type|taxon)) %>% 
   mutate(.epred = .epred ,
-         .epred = .epred*unique(mod1_taxa$data2$raw_data$mean_sum_ppb))
+         .epred = .epred*unique(mod1_taxa$data2$mean_sum_ppb))
 
 posts_taxa_sumpfas_summary = posts_taxa_sumpfas %>% 
   group_by(type, order, taxon) %>% 
@@ -463,34 +492,19 @@ sum_pfas_order_stage = posts_taxa_sumpfas_summary %>%
 
 write.csv(sum_pfas_order_stage, file = "tables/sum_pfas_order_stage.csv")
 
-
 # partitioning coefficients sum pfas --------------------------------------
-
 mod1 = readRDS(file = "models/mod1.rds")
-mod1_taxa = readRDS(file = "models/mod1_taxa.rds")
 
-posts_sumpfas = mod1$data %>% 
-  distinct(type) %>%
-  mutate(order = case_when(type == "Water" ~ 1,
-                           type == "Sediment" ~ 2,
-                           type == "Biofilm" ~ 5,
-                           type == "Detritus" ~ 3,
-                           type == "Seston" ~ 4,
-                           type == "Larval" ~ 6,
-                           type == "Emergent" ~ 7,
-                           type == "Tetragnathidae" ~ 8)) %>% 
-  add_epred_draws(mod1, re_formula = NA) %>% 
-  mutate(.epred = .epred ,
-         .epred = .epred*unique(mod1$data2$raw_data$mean_sum_ppb)) 
-
-sum_partitioning = posts_sumpfas %>% 
-  select(-order) %>% 
-  filter(.draw <= 500) %>% 
+posts_ttf_sum = mod1$data2 %>% 
+  distinct(type, site, mean_sum_ppb) %>% 
+  add_epred_draws(mod1) %>% 
+  mutate(sum_ppb = (.epred - 0.0001)*mean_sum_ppb) %>% 
+  mutate(sum_ppb = case_when(sum_ppb < 0.000101 ~ 0, TRUE ~ sum_ppb - 0.0001)) %>%
   ungroup %>% 
-  select(-.row, -.chain, -.iteration, -order) %>% 
-  group_by(type, .draw) %>% 
-  pivot_wider(names_from = type, values_from = .epred) %>% 
-  clean_names() %>% 
+  select(type, site, .draw, sum_ppb) %>% 
+  pivot_wider(names_from = type, values_from = sum_ppb) %>% 
+  clean_names() %>%
+  group_by(site) %>% 
   mutate(a_kd_water_to_sediment_ttf = sediment/water,
          b_kd_water_to_biofilm_ttf = biofilm/water,
          a2_kd_water_to_seston_ttf = seston/water,
@@ -501,20 +515,131 @@ sum_partitioning = posts_sumpfas %>%
          f_baf_seston_to_larvae_ttf = larval/seston,
          g_mtf_larvae_to_emergent_ttf = emergent/larval,
          h_ttf_emergent_to_spider_ttf = tetragnathidae/emergent) %>% 
-  pivot_longer(cols = ends_with("ttf"), values_to = ".epred") %>% 
-    select(draw, name, .epred)  %>% 
+  pivot_longer(cols = ends_with("ttf")) %>% 
+  select(site, draw, name, value) %>% 
   group_by(draw, name) %>% 
+  reframe(value = median(value))
+
+sum_partitioning = posts_ttf_sum %>% 
+  group_by(name) %>%
+  median_qi(value) %>%
+  mutate(value = round(value, 1),
+         .lower = round(.lower, 1),
+         .upper = round(.upper, 1)) %>% 
+  mutate(median_cri = paste0(value, " (",.lower, " to ", .upper, ")")) %>% 
+  ungroup %>% 
+  select(name, median_cri) %>% 
+  mutate(units = "MEF") %>% 
+  mutate(description = "Median and CrI of partitioning sum pfas")
+
+write_csv(sum_partitioning, file = "tables/sum_partitioning.csv")
+
+# partitioning coefficients sum pfas metamorph by taxa --------------------------------------
+
+mod1 = readRDS(file = "models/mod1.rds")
+mod1_taxa = readRDS(file = "models/mod1_taxa.rds")
+
+posts_sumpfas_taxa = mod1_taxa$data %>% 
+  distinct(type, taxon, site) %>%
+  mutate(order = case_when(type == "Water" ~ 1,
+                           type == "Sediment" ~ 2,
+                           type == "Biofilm" ~ 5,
+                           type == "Detritus" ~ 3,
+                           type == "Seston" ~ 4,
+                           type == "Larval" ~ 6,
+                           type == "Emergent" ~ 7,
+                           type == "Tetragnathidae" ~ 8)) %>% 
+  add_epred_draws(mod1_taxa, re_formula = NULL) %>% 
+  mutate(.epred = .epred ,
+         .epred = .epred*unique(mod1$data2$mean_sum_ppb)) 
+
+sum_partitioning_taxa_metamorph = posts_sumpfas_taxa %>% 
+  filter(type %in% c("Emergent", "Larval")) %>% 
+  select(-order) %>% 
+  ungroup %>% 
+  select(-.row, -.chain, -.iteration, -order) %>% 
+  group_by(type, taxon, .draw) %>% 
+  reframe(.epred = median(.epred)) %>% 
+  pivot_wider(names_from = type, values_from = .epred) %>% 
+  clean_names() %>% 
+  mutate(
+         g_mtf_larvae_to_emergent_ttf = emergent/larval) %>% 
+  pivot_longer(cols = ends_with("ttf"), values_to = ".epred") %>% 
+  select(draw, name, .epred, taxon)  %>% 
+  group_by(draw, name, taxon) %>% 
   reframe(.epred = median(.epred))  %>% 
-  group_by(name) %>% 
+  group_by(name, taxon) %>% 
   median_qi(.epred) %>%
   mutate(.epred = round(.epred, 2),
          .lower = round(.lower, 2),
          .upper = round(.upper, 2)) %>% 
   mutate(median_cri = paste0(.epred, " (",.lower, " to ", .upper, ")")) %>% 
   ungroup %>% 
-  select(name, median_cri) %>% 
-  mutate(units = "partitioning coefficients") %>% 
+  select(taxon, name, median_cri) %>% 
+  mutate(units = "MEF") %>% 
   mutate(description = "Median and CrI of partitioning sum pfas")
 
-write.csv(sum_partitioning, file = "tables/sum_partitioning.csv")
+write_csv(sum_partitioning_taxa_metamorph, file = "tables/sum_partitioning_taxa_metamorph.csv")
 
+sum_partitioning_all = sum_partitioning_taxa_metamorph %>% 
+  bind_rows(read_csv(file = "tables/sum_partitioning.csv") %>% 
+              mutate(taxon = "Overall") %>% 
+              filter(name == "g_mtf_larvae_to_emergent_ttf")) %>% 
+  mutate(source_code = "06) tables.R ~L 594")
+
+write_csv(sum_partitioning_all, file = "tables/sum_partitioning_all.csv")
+
+# # test
+# posts_sumpfas_taxa %>% 
+#   filter(type %in% c("Emergent", "Larval")) %>%  
+#   ggplot(aes(x = taxon, y = .epred, color = type)) +
+#   stat_pointinterval(position = position_dodge(width = 0.5)) +
+#   facet_wrap(~site) +
+#   coord_flip()
+
+# proportion pfas ---------------------------------------------------------
+
+posts_taxon = readRDS("posteriors/posts_taxon.rds")
+
+proportion_posts = posts_taxon %>%
+  filter(.draw <= 100) %>% 
+  group_by(pfas_type, type, .draw) %>%
+  reframe(.epred = median(.epred)) %>% 
+  group_by(.draw, type) %>%
+  mutate(total = sum(.epred)) %>% 
+  mutate(.epred = .epred/total) %>%
+  group_by(pfas_type, type) %>% 
+  median_qi(.epred) %>%
+  mutate(.epred = round(.epred*100, 1),
+         .lower = round(.lower*100, 1),
+         .upper = round(.upper*100, 1)) %>% 
+  mutate(median_cri = paste0(.epred, " (",.lower, " to ", .upper, ")")) %>% 
+  ungroup %>% 
+  select(pfas_type, type, median_cri) %>% 
+  pivot_wider(names_from = type, values_from = median_cri)
+
+write_csv(proportion_posts, file = "tables/proportion_posts.csv")
+
+
+# proportion pfas site ---------------------------------------------------------
+
+posts_taxon = readRDS("posteriors/posts_taxon.rds")
+
+proportion_posts_site = posts_taxon %>%
+  filter(.draw <= 100) %>% 
+  group_by(pfas_type, site, type, .draw) %>%
+  reframe(.epred = median(.epred)) %>% 
+  group_by(.draw, type, site) %>%
+  mutate(total = sum(.epred)) %>% 
+  mutate(.epred = .epred/total) %>%
+  group_by(pfas_type, type, site) %>% 
+  median_qi(.epred) %>%
+  mutate(.epred = round(.epred*100, 1),
+         .lower = round(.lower*100, 1),
+         .upper = round(.upper*100, 1)) %>% 
+  mutate(median_cri = paste0(.epred, " (",.lower, " to ", .upper, ")")) %>% 
+  ungroup %>% 
+  select(pfas_type, type, median_cri, site) %>% 
+  pivot_wider(names_from = type, values_from = median_cri)
+
+write_csv(proportion_posts_site, file = "tables/proportion_posts_site.csv")

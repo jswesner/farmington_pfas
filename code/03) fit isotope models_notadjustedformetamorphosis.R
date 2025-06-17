@@ -78,16 +78,26 @@ brm_isotopes_notadjustedformetamorphosis = brm(mean_centered_15n ~ taxon + (1 + 
                    data = isotopes)
 
 saveRDS(brm_isotopes_notadjustedformetamorphosis, file = "models/brm_isotopes_notadjustedformetamorphosis.rds")
-plot(conditional_effects(brm_isotopes), points = T)
+plot(conditional_effects(brm_isotopes_notadjustedformetamorphosis), points = T)
 
 # posteriors --------------------------------------------------------------
+brm_isotopes_notadjustedformetamorphosis = readRDS(file = "models/brm_isotopes_notadjustedformetamorphosis.rds")
+
+baseline_n15 = readRDS(file = "posteriors/iso_posts_notadjustedformetamorphosis.rds") %>% 
+  filter(taxon == "Biofilm") %>% 
+  mutate(baseline_n15_raw = .epred + center_15n) %>% 
+  ungroup %>% 
+  select(site, .draw, baseline_n15_raw) 
 
 iso_posts_notadjustedformetamorphosis = isotopes %>%
-  distinct(taxon, mean_15n, site) %>% 
+  distinct(taxon, site, mean_15n) %>% 
   rename(center_15n = mean_15n) %>% 
   add_epred_draws(brm_isotopes_notadjustedformetamorphosis, re_formula = ~ NULL) %>% 
   group_by(taxon) %>% 
-  mutate(median = median(.epred))
+  mutate(median = median(.epred)) %>% 
+  left_join(baseline_n15) %>% 
+  mutate(raw_n15 = .epred + center_15n,
+         trophic_level = 1 + (raw_n15 - baseline_n15_raw)/3.4)
 
 saveRDS(iso_posts_notadjustedformetamorphosis, file = "posteriors/iso_posts_notadjustedformetamorphosis.rds")
 
@@ -103,3 +113,9 @@ iso_posts_notadjustedformetamorphosis %>%
              aes(y = mean_centered_15n),
              fill = "white", shape = 21) +
   ylim(-4,4)
+
+
+iso_posts_notadjustedformetamorphosis %>% 
+  group_by(site, taxon) %>% 
+  mutate(raw_n15 = .epred + center_15n) %>% 
+  median_qi(raw_n15)

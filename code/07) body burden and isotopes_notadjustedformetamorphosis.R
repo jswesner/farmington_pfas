@@ -116,7 +116,7 @@ ggsave(change_in_body_burden, file = "plots/change_in_body_burden.jpg",
 
 
 
-# estimate isotope and tmf ------------------------------------------------
+# tmf models per pfas ------------------------------------------------
 iso_posts_notadjustedformetamorphosis = readRDS(file = "posteriors/iso_posts_notadjustedformetamorphosis.rds") 
 
 pfas_posts = merged_d2 %>% 
@@ -156,7 +156,7 @@ pfas_conc_isotopes_notadjustedformetamorphosis = pfas_posts %>%
 pfas_conc_isotopes_notadjustedformetamorphosis %>%
   # mutate(range = upper_conc - lower_conc) %>% arrange(-range) %>% select(range)
   # filter(site == "Burr Pond Brook") %>% 
-  ggplot(aes(x = mean_n15, color = pfas_type, y = log10_median_conc)) + 
+  ggplot(aes(x = trophic_level, color = pfas_type, y = log10_median_conc)) + 
   geom_pointrange(aes(ymin = log10_median_conc + log10_sd_conc,
                       ymax = log10_median_conc - log10_sd_conc)) +
   # geom_text(aes(label = taxon)) +
@@ -171,21 +171,20 @@ pfas_conc_isotopes_notadjustedformetamorphosis %>%
 
 # fit model
 
-brm_tmf_iso_notadjustedformetamorphosis = brm(log10_median_conc_s ~ mean_n15 + (1 + mean_n15|site) + (1 + mean_n15|pfas_type),
-                  data = pfas_conc_isotopes_notadjustedformetamorphosis,
-                  family = gaussian(),
-                  prior = c(prior(normal(0, 1), class = Intercept),
-                             prior(normal(0, 1), class = b),
-                             prior(exponential(2), class = sd)),
-                  iter = 2000, chains = 4)
+# brm_tmf_iso_notadjustedformetamorphosis = brm(log10_median_conc_s ~ mean_n15 + (1 + mean_n15|site) + (1 + mean_n15|pfas_type),
+#                   data = pfas_conc_isotopes_notadjustedformetamorphosis,
+#                   family = gaussian(),
+#                   prior = c(prior(normal(0, 1), class = Intercept),
+#                              prior(normal(0, 1), class = b),
+#                              prior(exponential(2), class = sd)),
+#                   iter = 2000, chains = 4)
 # 
 # saveRDS(brm_tmf_iso_notadjustedformetamorphosis, file = "models/brm_tmf_iso_notadjustedformetamorphosis.rds")
 
+brm_tmf_iso_notadjustedformetamorphosis = readRDS(file = "models/brm_tmf_iso_notadjustedformetamorphosis.rds")
 
 # # check model
 pp_check(brm_tmf_iso_notadjustedformetamorphosis, type = "dens_overlay_grouped", group = "pfas_type")
-
-brm_tmf_iso_notadjustedformetamorphosis = readRDS(file = "models/brm_tmf_iso_notadjustedformetamorphosis.rds")
 
 posts_tmf_iso_notadjustedformetamorphosis = brm_tmf_iso_notadjustedformetamorphosis$data %>% 
   distinct(site, pfas_type) %>% 
@@ -229,13 +228,109 @@ ggsave(plot_tmf_isotopes_notadjustedformetamorphosis, file = "plots/plot_tmf_iso
        width = 10, height = 4)
 
 
-# slopes ------------------------------------------------------------------
+# tmf models sum pfas -----------------------------------------------------
+mod1_taxa = readRDS(file = "models/mod1_taxa.rds") # has just the insect taxa
+mod1 = readRDS(file = "models/mod1.rds") # has biofilm and spiders 
+
+mod1
+
+iso_posts_notadjustedformetamorphosis = readRDS(file = "posteriors/iso_posts_notadjustedformetamorphosis.rds") 
+
+pfas_sum_trophic_insects = mod1_taxa$data2 %>% 
+  distinct(type, taxon, site, mean_sum_ppb) %>% 
+  add_epred_draws(mod1_taxa) %>% 
+  mutate(.epred = (.epred - 0.0001)*mean_sum_ppb) %>% 
+  group_by(type, taxon, site) %>% 
+  reframe(mean_sum = mean(.epred),
+          median_sum = median(.epred),
+          sd_sum = sd(.epred),
+          lower_sum = quantile(.epred, probs = 0.025),
+          upper_sum = quantile(.epred, probs = 0.975)) 
+
+pfas_sum_trophic_biofilm_spiders = mod1$data2 %>% 
+  distinct(type, site, mean_sum_ppb) %>% 
+  filter(type %in% c("Biofilm", "Tetragnathidae")) %>% 
+  add_epred_draws(mod1) %>% 
+  mutate(.epred = (.epred - 0.0001)*mean_sum_ppb) %>% 
+  group_by(type, site) %>% 
+  reframe(mean_sum = mean(.epred),
+          median_sum = median(.epred),
+          sd_sum = sd(.epred),
+          lower_sum = quantile(.epred, probs = 0.025),
+          upper_sum = quantile(.epred, probs = 0.975)) %>%
+  rename(taxon = type) %>% 
+  mutate(taxon = case_when(taxon == "Tetragnathidae" ~ "Spider", TRUE ~ taxon)) 
+
+pfas_sum_trophic = bind_rows(pfas_sum_trophic_insects, pfas_sum_trophic_biofilm_spiders) %>% 
+  left_join(iso_post_summaries_notadjustedformetamorphosis, relationship = "many-to-many") %>% 
+  mutate(log10_mean_sum = log10(mean_sum),
+         log10_sd_sum = sd(log10_mean_sum),
+         log10_mean_sum_s = scale(log10_mean_sum),
+         log10_median_sum = log10(median_sum),
+         log10_median_sum_s = scale(log10_median_sum)) 
+
+pfas_sum_trophic %>% 
+  ggplot(aes(x = mean_n15, y = log10_median_sum_s)) + 
+  geom_point()
+
+# fit model
+
+# brm_tmf_iso_sum = brm(log10_median_sum_s ~ mean_n15 + (1 + mean_n15|site),
+#                       data = pfas_sum_trophic,
+#                       family = gaussian(),
+#                       prior = c(prior(normal(0, 1), class = Intercept),
+#                                 prior(normal(0, 1), class = b),
+#                                 prior(exponential(2), class = sd)),
+#                       iter = 2000, chains = 4)
+# 
+# saveRDS(brm_tmf_iso_sum, file = "models/brm_tmf_iso_sum.rds")
+
+brm_tmf_iso_sum = readRDS("models/brm_tmf_iso_sum.rds")
+
+posts_tmf_iso_sum = brm_tmf_iso_sum$data2 %>% 
+  filter(site != "Russell Brook") %>% 
+  distinct(site) %>% 
+  mutate(center_sum = attributes(brm_tmf_iso_sum$data2$log10_median_sum_s)$`scaled:center`,
+         scale_sum = attributes(brm_tmf_iso_sum$data2$log10_median_sum_s)$`scaled:scale`) %>% 
+  expand_grid(mean_n15 = seq(min(brm_tmf_iso_sum$data$mean_n15),
+                             max(brm_tmf_iso_sum$data$mean_n15), 
+                             length.out = 30)) %>% 
+  add_epred_draws(brm_tmf_iso_sum, re_formula = NULL) %>% 
+  group_by(mean_n15, .draw) %>% 
+  reframe(.epred = mean(.epred),
+          .epred_log10 = (.epred*scale_sum) + center_sum)
+
+
+posts_tmf_iso_sum_summary = posts_tmf_iso_sum %>% 
+  group_by(mean_n15) %>% 
+  median_qi(.epred_log10)
+  
+plot_tmf_sum = posts_tmf_iso_sum_summary %>% 
+  ggplot(aes(x = mean_n15, y = .epred_log10)) +
+  geom_ribbon(aes(ymin = .lower, 
+                  ymax = .upper), alpha = 0.3) +
+  geom_line() +
+  guides(fill = "none",
+         color = "none") +
+  geom_point(data = brm_tmf_iso_sum$data2,
+             aes(y = log10_median_sum),
+             shape = 1,
+             size = 1) +
+  theme(strip.text = element_text(size = 6),
+        axis.text.x = element_text(size = 7)) +
+  labs(x = expression(paste(delta^{15}, "N (centered)")),
+       y = "PFAS Concentration (log10 tissue ppb)") +
+  NULL
+
+ggsave(plot_tmf_sum, file = "plots/plot_tmf_sum.jpg", width = 5, height = 5)
+
+# tmf slopes per site ------------------------------------------------------------------
 
 plot_tmf_isotopes2_notadjustedformetamorphosis = posts_tmf_iso_summary_notadjustedformetamorphosis %>% 
   # filter(pfas_type == "6:2FTS") %>% 
-  ggplot(aes(x = mean_n15, y = 10^.epred_log10, fill = pfas_type)) +
-  geom_ribbon(aes(ymin = 10^.lower, 
-                  ymax = 10^.upper), alpha = 0.3) +
+  ggplot(aes(x = mean_n15, y = .epred_log10, fill = pfas_type)) +
+  geom_ribbon(aes(ymin = .lower, 
+                  ymax = .upper), alpha = 0.3) +
   geom_line() +
   scale_fill_custom() + 
   scale_color_custom() +
@@ -250,62 +345,63 @@ plot_tmf_isotopes2_notadjustedformetamorphosis = posts_tmf_iso_summary_notadjust
   theme(strip.text = element_text(size = 6),
         axis.text.x = element_text(size = 7)) +
   labs(x = expression(paste(delta^{15}, "N (centered)")),
-       y = "PFAS Concentration (tissue ppb)") +
+       y = "PFAS Concentration (log10 tissue ppb)") +
   NULL
 
 ggsave(plot_tmf_isotopes2_notadjustedformetamorphosis, file = "plots/plot_tmf_isotopes2_notadjustedformetamorphosis.jpg",
        width = 10, height = 4)
 
-tmf_iso_slopes_notadjustedformetamorphosis = brm_tmf_iso_notadjustedformetamorphosis$data %>% 
-  distinct(site, pfas_type) %>% 
-  # expand_grid(mean_n15 = seq(-2, 1.4, length.out = 2)) %>% # 3.4 per mill difference = 1 trophic level. Use -2 and 1.4 to keep within the values of centered n15
-  expand_grid(mean_n15 = seq(0, 1, length.out = 2)) %>% 
+tmf_iso_slopes_persite = brm_tmf_iso_notadjustedformetamorphosis$data2 %>% 
+  distinct(site, pfas_type, center_15n) %>% 
+  expand_grid(mean_n15 = seq(-2, 1.4, length.out = 2)) %>% # 3.4 per mill difference = 1 trophic level. Use -2 and 1.4 to keep within the values of centered n15
+  # expand_grid(mean_n15 = seq(0, 1, length.out = 2)) %>%
   add_epred_draws(brm_tmf_iso_notadjustedformetamorphosis, re_formula = NULL) %>%
   ungroup %>% 
-  select(-.row, -.chain, -.iteration) %>% 
+  select(-.row, -.chain, -.iteration) %>%
+  mutate(.epred = 10^.epred) %>%
   pivot_wider(names_from = mean_n15, values_from = .epred) %>% 
-  mutate(slope = `1` - `0`,
-         slope = 10^slope)
+  mutate(slope = `1.4`/`-2`) # multiplicative change per trophic level (same as this: 10^(`1.4` - `-2`))
 
-tmf_slope_table_notadjustedformetamorphosis = tmf_iso_slopes_notadjustedformetamorphosis %>% 
+tmf_slope_table_persite = tmf_iso_slopes_persite %>% 
   group_by(site, pfas_type) %>% 
   median_qi(slope)
 
-write_csv(tmf_slope_table_notadjustedformetamorphosis, file = "tables/tmf_slope_table_notadjustedformetamorphosis.csv")
+write_csv(tmf_slope_table_persite, file = "tables/tmf_slope_table_persite.csv")
 
 library(ggridges)
-tmf_slopes_notadjustedformetamorphosis = tmf_iso_slopes_notadjustedformetamorphosis %>% 
+tmf_slopes_persite = tmf_iso_slopes_persite %>% 
   ggplot(aes(x = slope, y = pfas_type, fill = site)) + 
-  # stat_halfeye(aes(fill = site, color = site)) +
   stat_density_ridges(quantile_lines = TRUE, quantiles = 2, scale = 1, 
                       alpha = 0.7) +
   scale_fill_brewer() +
   # scale_x_log10() +
-  # ggthemes::scale_fill_colorblind() +
-  # ggthemes::scale_color_colorblind() +
-  labs(x = expression(paste("TMF (Fold increase in PFAS per unit increase in ", delta^{15}, "N)")),
-       y = "",
-       fill = "",
-       color = "") +
-  coord_cartesian(xlim = c(NA, 5))
+  labs(
+    # x = expression(atop("Trophic Magnification Factor", 
+    #                     "(Fold increase in PFAS per unit increase in "*delta^{15}*"N)")),
+    x = "Trophic Magnification Factor\n(Fold increase in PFAS ppb per trophic level)",
+    y = "",
+    fill = "",
+    color = "") +
+  coord_cartesian(xlim = c(NA, 150)) +
+  NULL
 
+ggsave(tmf_slopes_persite, file = "plots/tmf_slopes_persite.jpg", width = 6.5, height = 9)
 
-ggsave(tmf_slopes_notadjustedformetamorphosis, file = "plots/tmf_slopes_notadjustedformetamorphosis.jpg", width = 6.5, height = 9)
+# tmf slopes overall --------------------------------------------
+brm_tmf_iso_notadjustedformetamorphosis = readRDS("models/brm_tmf_iso_notadjustedformetamorphosis.rds")
 
-
-# tmf slopes not site specific --------------------------------------------
-tmf_iso_slopes_overall = brm_tmf_iso_notadjustedformetamorphosis$data %>% 
-  distinct(pfas_type) %>% 
-  # expand_grid(mean_n15 = seq(-2, 1.4, length.out = 2)) %>% # 3.4 per mill difference = 1 trophic level. Use -2 and 1.4 to keep within the values of centered n15
-  expand_grid(mean_n15 = seq(0, 1, length.out = 2)) %>% 
-  add_epred_draws(brm_tmf_iso_notadjustedformetamorphosis, 
-                  re_formula = ~ (1 + mean_n15|pfas_type)) %>%
-  ungroup %>% 
-  select(-.row, -.chain, -.iteration) %>% 
-  pivot_wider(names_from = mean_n15, values_from = .epred) %>% 
-  mutate(slope = `1` - `0`,
-         slope = 10^slope)
-
+tmf_iso_slopes_overall = brm_tmf_iso_notadjustedformetamorphosis$data2 %>%
+  distinct(site, pfas_type, center_15n) %>%
+  expand_grid(mean_n15 = seq(-2, 1.4, length.out = 2)) %>% # 3.4 per mill difference = 1 trophic level. Use -2 and 1.4 to keep within the values of centered n15
+  # expand_grid(mean_n15 = seq(0, 1, length.out = 2)) %>%
+  add_epred_draws(brm_tmf_iso_notadjustedformetamorphosis, re_formula = NULL) %>%
+  ungroup %>%
+  select(-.row, -.chain, -.iteration) %>%
+  mutate(.epred = 10^.epred) %>%
+  pivot_wider(names_from = mean_n15, values_from = .epred) %>%
+  mutate(slope = `1.4`/`-2`) %>%  # multiplicative change per trophic level (same as this: 10^(`1.4` - `-2`))
+  group_by(.draw, pfas_type) %>%
+  reframe(slope = mean(slope))
 
 tmf_slopes_overall = tmf_iso_slopes_overall %>% 
   group_by(pfas_type) %>% 
@@ -345,7 +441,7 @@ plot_tmf_overall = posts_tmf_iso_overall %>%
         axis.text.x = element_text(size = 7),
         axis.title = element_text(size = 7)) +
   labs(x = expression(paste(delta^{15}, "N (centered)")),
-       y = "PFAS Concentration\n(tissue ppb)") +
+       y = "PFAS Concentration\n(log10 tissue ppb)") +
   NULL
 
 
