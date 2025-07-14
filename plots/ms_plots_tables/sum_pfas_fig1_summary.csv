@@ -1,0 +1,9 @@
+type,center_interval,taxon,group_order,units
+Water,0.1 (0 to 0.2),NA,1,∑12 ppb (posterior median and 95% CrI)
+Sediment,2.8 (1.6 to 6),NA,1,∑12 ppb (posterior median and 95% CrI)
+Detritus,5.7 (2.6 to 16.9),NA,1,∑12 ppb (posterior median and 95% CrI)
+Seston,13.5 (5.9 to 36.8),NA,1,∑12 ppb (posterior median and 95% CrI)
+Biofilm,11.4 (7.6 to 18.1),NA,1,∑12 ppb (posterior median and 95% CrI)
+Larval,43.8 (30.7 to 68.6),Overall,1,∑12 ppb (posterior median and 95% CrI)
+Emergent,70.8 (42.2 to 145.2),Overall,1,∑12 ppb (posterior median and 95% CrI)
+Tetragnathidae,56.1 (31 to 109),NA,1,∑12 ppb (posterior median and 95% CrI)
