@@ -7,6 +7,7 @@ library(ggh4x)
 library(scales)
 library(patchwork)
 library(cowplot)
+library(ggridges)
 
 # wrangle models, data, functions -----------------------------------------
 
@@ -803,19 +804,11 @@ mef_by_taxon_fig3 = mef_by_taxon_and_pfas %>%
 
 ggsave(mef_by_taxon_fig3, file = "plots/ms_plots_tables/mef_by_taxon_fig3.jpg", width = 7, height = 7)
 
-# body burden by taxon (fig 3) --------------------------------------------
-library(readxl)
-insect_mass = read_excel("data/Farmington_InsectMasses.xlsx") %>% clean_names() %>% 
-  mutate(units = "grams")
 
-mean_insect_mass = insect_mass %>% 
-  group_by(site, order, life_stage) %>% 
-  reframe(mean_gdw = mean(0.2*composite_sample_mass_ww, na.rm = T), # 0.2 converts wet to dry mass
-          sd_gdw = sd(0.2*composite_sample_mass_ww, na.rm = T)) %>% 
-  rename(taxon = order) %>% 
-  mutate(type = case_when(life_stage == "Adult" ~ "Emergent", T ~ life_stage),
-         type_taxon = paste0(type, "_", taxon)) %>% 
-  mutate(site = case_when(site == "Pequabuck Brook" ~ "Pequabuck River", TRUE ~ site))
+# body burden per pfas by taxon (fig 3) --------------------------------------------
+
+mean_insect_mass = readRDS("posteriors/mean_insect_mass.rds") %>% clean_names() %>% 
+  mutate(units = "grams")
 
 insect_posts = merged_d2 %>% 
   distinct(site, type_taxon, taxon, type, max_conc, pfas_type) %>% 
@@ -825,21 +818,23 @@ insect_posts = merged_d2 %>%
   add_epred_draws(hg4_taxon, ndraws = 500) %>% 
   mutate(.epred = .epred*max_conc) 
 
-diff_summary = insect_posts %>% 
+diffs = insect_posts %>% 
   filter(type %in% c("Emergent", "Larval")) %>% 
   mutate(ng_per_bug = (.epred/mean_gdw)) %>% 
   ungroup %>%
   select(site, taxon, type, ng_per_bug, .draw, pfas_type) %>%
   pivot_wider(names_from = type, values_from = ng_per_bug) %>% 
   group_by(pfas_type) %>% 
-  mutate(diff = Emergent - Larval) %>% 
+  mutate(diff = Emergent - Larval,
+         ratio = Emergent / Larval) %>% 
   group_by(pfas_type) %>% 
-  mutate(diff = diff) %>% 
   filter(!is.na(diff)) %>% 
   # filter(pfas_type == "PFOS") %>%
   group_by(taxon, .draw, pfas_type) %>% 
-  reframe(diff = mean(diff)) %>% 
-  group_by(taxon, pfas_type) %>% 
+  reframe(diff = mean(diff),
+          ratio = mean(ratio))  
+
+diff_summary = diffs %>% group_by(taxon, pfas_type) %>% 
   median_qi(diff, .width = 0.5) %>% 
   mutate(taxon = as.factor(taxon),
          taxon = fct_relevel(taxon, "Plecoptera", "Odonata", "Ephemeroptera", "Trichoptera", "Diptera"))
@@ -852,7 +847,7 @@ change_in_body_burden_fig3 = diff_summary %>%
                  linewidth = 0.2) +
   # facet_grid2( pfas_type ~ .) +
   geom_vline(xintercept = 0, linetype = "dotted") +
-  xlim(-2000, 5000) +
+  xlim(-2000, 2000) +
   # guides(color = "none") +
   scale_color_brewer(type = "qual", palette = 7) +
   labs(x = "Change in body burden during metamorphosis (ng/individual)",
@@ -878,6 +873,109 @@ change_in_body_burden_fig3_summary = diff_summary %>%
   select(-order)
 
 write_csv(change_in_body_burden_fig3_summary, file = "plots/ms_plots_tables/change_in_body_burden_fig3_summary.csv")
+
+
+ratio_burden_plot = diffs %>% 
+  filter(!is.infinite(ratio)) %>% 
+  mutate(taxon = as.factor(taxon),
+         taxon = fct_relevel(taxon, "Plecoptera", "Odonata", "Ephemeroptera", "Trichoptera", "Diptera")) %>%
+  group_by(taxon, pfas_type) %>% 
+  mutate(taxon_median = median(diff)) %>% 
+  mutate(ratio = ratio + 0.0001) %>% 
+  ggplot(aes(x = ratio, y = pfas_type)) + 
+  # ggridges::geom_density_ridges_gradient(aes(fill = after_stat(x)), scale = 0.7,
+  #                               color = NA) +
+  ggridges::geom_density_ridges(aes(fill = taxon)) +
+  facet_wrap2(~taxon) +
+  geom_vline(xintercept = 1) +
+  scale_x_log10(limits = c(1e-04, 1e04),
+                breaks = c(0.001, 0.01, 0.1, 1, 10, 100, 1000),
+                labels = c("0.001", "0.01", "0.1", "1", "10", "100", "1000")) +
+  guides(fill = "none") +
+  scale_fill_brewer(type = "qual", palette = 7) +
+  labs(x = "Ratio of adult:larval PFAS body burden",
+       y = "PFAS Compound",
+       color = "") +
+  geom_text(data = tibble(ratio = 1, pfas_type = "8:2FTS"),
+            label = "Larvae higher                        Adults higher",
+            aes(y = 13),
+            size = 2) +
+  theme(legend.text = element_text(size = 8),
+        text = element_text(size = 8)) +
+  NULL
+
+ggsave(ratio_burden_plot, file = "plots/ms_plots_tables/ratio_burden_plot_fig3.jpg", 
+       width = 6.5, height = 8)
+
+ratio_burden_plot_fig3_summary = ratio_summary %>% 
+  make_summary_table(center = "ratio", digits = 1) %>% 
+  select(taxon, pfas_type, center_interval) %>% 
+  pivot_wider(names_from = taxon, values_from = center_interval) %>% 
+  left_join(pfas_orders) %>% 
+  arrange(order) %>% 
+  select(-order)
+
+write_csv(ratio_burden_plot_fig3_summary, file = "plots/ms_plots_tables/ratio_burden_plot_fig3_summary.csv")
+
+
+# body burden sum by taxon ---------------------------------------------------------
+mean_insect_mass = readRDS("posteriors/mean_insect_mass.rds") %>% clean_names() %>% 
+  mutate(units = "grams")
+
+mod1_taxa = readRDS(file = "models/mod1_taxa.rds")
+
+posts_ttf_sum_taxon = mod1_taxa$data %>% 
+  distinct(type, site, taxon) %>%
+  mutate(order = case_when(type == "Water" ~ 1,
+                           type == "Sediment" ~ 2,
+                           type == "Biofilm" ~ 5,
+                           type == "Detritus" ~ 3,
+                           type == "Seston" ~ 4,
+                           type == "Larval" ~ 6,
+                           type == "Emergent" ~ 7,
+                           type == "Tetragnathidae" ~ 8)) %>% 
+  left_join(mean_insect_mass %>% select(-type) %>% separate(type_taxon, into = c("type", "taxon"))) %>% 
+  add_epred_draws(seed = 20202, mod1_taxa, re_formula = NULL) %>% 
+  mutate(sum_ppb = (.epred - 0.0001)*unique(mod1_taxa$data2$mean_sum_ppb)) %>% 
+  mutate(sum_ppb = case_when(sum_ppb < 0.000101 ~ 0, TRUE ~ sum_ppb - 0.0001)) %>% 
+  mutate(sum_burden = sum_ppb/mean_gdw) %>% 
+  group_by(type, taxon, .draw) %>% 
+  reframe(sum_burden = mean(sum_burden, na.rm = T)) %>% 
+  ungroup %>% 
+  select(type, taxon, .draw, sum_burden) %>% 
+  pivot_wider(names_from = type, values_from = sum_burden) %>%
+  clean_names() 
+  
+
+diff_sum_burden = posts_ttf_sum_taxon %>% 
+  mutate(g_mtf_larvae_to_emergent_ttf = emergent - larval) %>% 
+  pivot_longer(cols = ends_with("ttf")) %>% 
+  select(taxon, draw, larval, emergent, value) 
+
+change_in_sum_body_burden = diff_sum_burden %>% 
+  group_by(taxon) %>% 
+  median_qi(value) %>% 
+  make_summary_table(center = "value", digits = 0) %>% 
+  filter(taxon != "Megaloptera") %>% 
+  select(taxon, center_interval) %>% 
+  mutate(metric = "Change in Body Burden adult:larval ng/individual")
+
+write_csv(change_in_sum_body_burden, file = "plots/ms_plots_tables/change_in_sum_body_burden.csv")
+
+ratio_sum_burden = posts_ttf_sum_taxon %>% 
+  mutate(g_mtf_larvae_to_emergent_ttf = emergent / larval) %>% 
+  pivot_longer(cols = ends_with("ttf")) %>% 
+  select(taxon, draw, larval, emergent, value) 
+
+ratio_in_sum_body_burden = ratio_sum_burden %>% 
+  group_by(taxon) %>% 
+  median_qi(value) %>% 
+  make_summary_table(center = "value", digits = 1) %>% 
+  filter(taxon != "Megaloptera") %>% 
+  select(taxon, center_interval) %>% 
+  mutate(metric = "Change in Body Burden adult:larval ng/individual")
+
+write_csv(ratio_in_sum_body_burden, file = "plots/ms_plots_tables/ratio_in_sum_body_burden.csv")
 
 
 # fig3_combined -----------------------------------------------------------
