@@ -193,6 +193,7 @@ write_csv(pfas_concentrations_bysite_summary, file = "plots/ms_plots_tables/pfas
 
 # sum ppb (fig 1) -------------------------------------------------------
 mod1 = readRDS(file = "models/mod1.rds")
+mod1_taxa = readRDS(file = "models/mod1_taxa.rds")
 
 posts_sumpfas = mod1$data %>% 
   distinct(type, site) %>%
@@ -209,6 +210,24 @@ posts_sumpfas = mod1$data %>%
   mutate(sum_ppb = case_when(sum_ppb < 0.000101 ~ 0, TRUE ~ sum_ppb - 0.0001)) %>% 
   group_by(type, .draw, order) %>% 
   reframe(sum_ppb = mean(sum_ppb))
+
+
+posts_taxa_sumpfas = mod1_taxa$data2 %>% 
+  distinct(site, type, taxon) %>%
+  filter(taxon != "Megaloptera") %>% 
+  mutate(order = case_when(type == "Water" ~ 1,
+                           type == "Sediment" ~ 2,
+                           type == "Biofilm" ~ 5,
+                           type == "Detritus" ~ 3,
+                           type == "Seston" ~ 4,
+                           type == "Larval" ~ 6,
+                           type == "Emergent" ~ 7,
+                           type == "Tetragnathidae" ~ 8)) %>% 
+  add_epred_draws(mod1_taxa) %>% 
+  mutate(sum_ppb = (.epred - 0.0001)*unique(mod1_taxa$data2$mean_sum_ppb)) %>% 
+  mutate(.epred = case_when(sum_ppb < 0.000101 ~ 0, TRUE ~ sum_ppb - 0.0001)) %>% 
+  group_by(order, type, taxon, .draw) %>% 
+  reframe(sum_ppb = mean(.epred)) 
 
 posts_sumpfas_summary = posts_sumpfas %>% 
   group_by(type, order) %>% 
@@ -232,7 +251,7 @@ sum_pfas_overall = posts_sumpfas_summary %>%
         legend.title = element_blank()) +
   stat_pointinterval(data = posts_taxa_sumpfas, aes(fill = taxon),
                      shape = 21, .width = 0,
-                     position = position_jitter(width = 0.1)) +
+                     position = position_jitter(width = 0.1, height = 0)) +
   geom_line(data = line_posts %>% filter(type %in% c("Water", "Sediment", "Larval", "Emergent", "Tetragnathidae")),
             aes(group = group),
             linetype = "dashed") +
@@ -272,6 +291,17 @@ sum_pfas_fig1_summary = sumpfas_type %>%
   mutate(units = "\u221112 ppb (posterior median and 95% CrI)")
 
 write_csv(sum_pfas_fig1_summary, file = "plots/ms_plots_tables/sum_pfas_fig1_summary.csv")
+
+sum_pfas_fig1_summary_taxa = posts_taxa_sumpfas %>% 
+  group_by(type, taxon) %>% 
+  median_qi(sum_ppb) %>% 
+  make_summary_table(center = "sum_ppb") %>% 
+  select(type, taxon, center_interval) %>% 
+  pivot_wider(names_from = type, values_from = center_interval) %>% 
+  select(taxon, Larval, Emergent) %>% 
+  mutate(units = "\u221112 ppb (posterior median and 95% CrI)")
+
+write_csv(sum_pfas_fig1_summary_taxa, file = "plots/ms_plots_tables/sum_pfas_fig1_summary_taxa.csv")
 
 
 # proportion ppb (fig 1) -------------------------------------------------------------
@@ -553,7 +583,7 @@ sum_partitioning_fig2_summary = posts_ttf_summary_sum %>%
 write_csv(sum_partitioning_fig2_summary, file = "plots/ms_plots_tables/sum_partitioning_fig2_summary.csv")
 
 
-# sum and mef by taxon -----------------------------------------------
+# mef by taxon -----------------------------------------------
 
 mod1_taxa = readRDS(file = "models/mod1_taxa.rds")
 
@@ -591,6 +621,21 @@ sum_partitioning_taxon = posts_ttf_sum_taxon %>%
 
 write_csv(sum_partitioning_taxon, file = "plots/ms_plots_tables/sum_partitioning_taxon.csv")
 
+
+# ppb perpfas by taxon ------------------------------------------------------------
+
+perpfas_taxon_summary = posts_taxon %>% 
+  filter(type %in% c("Emergent", "Larval")) %>% 
+  group_by(type, taxon, pfas_type, pfas_order, .draw) %>% 
+  reframe(.epred = mean(.epred)) %>%  # average over sites
+  group_by(type, taxon, pfas_type, pfas_order) %>% 
+  median_qi(.epred) %>% 
+  make_summary_table(center = ".epred", digits = 2) %>% 
+  select(pfas_type, type, taxon, center_interval) %>% 
+  pivot_wider(names_from = type, values_from = center_interval) %>% 
+  mutate(units = "ppb (median and 95% CrI)")
+
+write_csv(perpfas_taxon_summary, file = "plots/ms_plots_tables/perpfas_taxon_summary.csv")
 
 # compound partitioning (fig 2) -----------------------------------
 
