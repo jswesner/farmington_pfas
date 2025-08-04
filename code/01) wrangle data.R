@@ -4,17 +4,11 @@ library(tidybayes)
 library(janitor)
 
 # load data
-log_kmw = read_csv("data/log_kw.csv") %>% 
-  mutate(pfas_type = str_remove(pfas_type, " ")) %>% 
-  mutate(log_kmw_mean = parse_number(str_sub(log_kmw, 1, 4)),
-         log_kmw_sd = parse_number(str_sub(log_kmw, -4, -1)),
-         log_kpw_mean = parse_number(log_kpw))
 
 merged_d2 = read_csv("data/Farmington_PFAS_FWstudy_Datarelease.csv") %>% 
   clean_names() %>% 
   rename(sample_id = field_id,
          pfas_type = compound) %>% 
-  left_join(log_kmw %>% select(pfas_type, log_kmw_mean, log_kmw_sd, log_kpw)) %>% 
   mutate(nondetects = case_when(conc == "ND" ~ "ND", # not detected
                                 conc == "NM" ~ "NM", # not measured
                                 conc == 'na' ~ 'na')) %>%  # not available
@@ -28,7 +22,6 @@ merged_d2 = read_csv("data/Farmington_PFAS_FWstudy_Datarelease.csv") %>%
                                pfas_type == "X8.2FTS" ~ "8:2FTS",
                                TRUE ~ pfas_type)) %>% 
   filter(!grepl("lank", sample_id)) %>% 
-  mutate(log_kmw_mean_s = scale(log_kmw_mean)) %>% 
   mutate(type_taxon = sample_type) %>% 
   separate(sample_type, into = c('type', 'taxon')) %>% 
   mutate(max_conc_ppb = max(conc_ppb, na.rm = T),
@@ -53,7 +46,6 @@ merged_d2_sum = read_csv("data/Farmington_PFAS_FWstudy_Datarelease.csv") %>%
   clean_names() %>% 
   rename(sample_id = field_id,
          pfas_type = compound) %>% 
-  left_join(log_kmw %>% select(pfas_type, log_kmw_mean, log_kmw_sd, log_kpw)) %>% 
   mutate(nondetects = case_when(conc == "ND" ~ "ND", # not detected
                                 conc == "NM" ~ "NM", # not measured
                                 conc == 'na' ~ 'na')) %>%  # not available
@@ -67,7 +59,6 @@ merged_d2_sum = read_csv("data/Farmington_PFAS_FWstudy_Datarelease.csv") %>%
                                pfas_type == "X8.2FTS" ~ "8:2FTS",
                                TRUE ~ pfas_type)) %>% 
   filter(!grepl("lank", sample_id)) %>% 
-  mutate(log_kmw_mean_s = scale(log_kmw_mean)) %>% 
   mutate(type_taxon = sample_type) %>% 
   separate(sample_type, into = c('type', 'taxon')) %>% 
   mutate(max_conc_ppb = max(conc_ppb, na.rm = T)) %>% 
@@ -94,7 +85,6 @@ merged_d2_sum_taxa = read_csv("data/Farmington_PFAS_FWstudy_Datarelease.csv") %>
   clean_names() %>% 
   rename(sample_id = field_id,
          pfas_type = compound) %>% 
-  left_join(log_kmw %>% select(pfas_type, log_kmw_mean, log_kmw_sd, log_kpw)) %>% 
   mutate(nondetects = case_when(conc == "ND" ~ "ND", # not detected
                                 conc == "NM" ~ "NM", # not measured
                                 conc == 'na' ~ 'na')) %>%  # not available
@@ -108,7 +98,6 @@ merged_d2_sum_taxa = read_csv("data/Farmington_PFAS_FWstudy_Datarelease.csv") %>
                                pfas_type == "X8.2FTS" ~ "8:2FTS",
                                TRUE ~ pfas_type)) %>% 
   filter(!grepl("lank", sample_id)) %>% 
-  mutate(log_kmw_mean_s = scale(log_kmw_mean)) %>% 
   mutate(type_taxon = sample_type) %>% 
   separate(sample_type, into = c('type', 'taxon')) %>% 
   mutate(max_conc_ppb = max(conc_ppb, na.rm = T),
