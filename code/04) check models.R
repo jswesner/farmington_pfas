@@ -1,16 +1,155 @@
 library(tidyverse)
 library(brms)
 library(tidybayes)
+library(ggtext)
+library(ggthemes)
 
 hg4_taxon = readRDS(file = "models/hg4_taxon.rds")
-old_hg4_taxon = readRDS(file = "models/old/hg4_taxon.rds")
+mod1 = readRDS(file = "models/mod1.rds")
+mod1_taxa = readRDS(file = "models/mod1_taxa.rds")
+mod_mass = readRDS(file = "models/mod_mass.rds")
+
+
+# posterior predictive checks ---------------
+pp_check_pfas_conc = pp_check(hg4_taxon) + scale_x_log10() + labs(x = "Standardized PFAS concentration (ppb/max(ppb))",
+                                                                  subtitle = "a) PFAS ppb")
+pp_check_sum_pfas = pp_check(mod1) + scale_x_log10() + labs(x = "Standardized \u221112 PFAS concentration (\u221112 ppb/max(\u221112 ppb))",
+                                                            subtitle = "b) \u221112 PFAS ppb")
+pp_check_sum_pfas_taxa = pp_check(mod1_taxa) + scale_x_log10()  + labs(x = "Standardized \u221112 PFAS concentration (\u221112 ppb/max(\u22111 2ppb))",
+                                                                       subtitle = "c) \u221112 PFAS concentration per taxon")
+pp_check_insect_mass = pp_check(mod_mass) + scale_x_log10() + labs(x = "Individual wet mass",
+                                                                   subtitle = "d) Mass")
+
+pp_a = pp_check_pfas_conc$data %>% 
+  mutate(is_y_label = case_when(grepl("rep", is_y_label) ~ "*y*<sub>rep",
+                                TRUE ~ "*y*")) %>% 
+  ggplot(aes(x = value + 0.00001)) +
+  geom_density(aes(group = rep_id, color = is_y_label)) +
+  scale_x_log10() +
+  theme(legend.text = element_markdown(),
+        axis.text.y = element_blank(),
+        axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank())  +
+  scale_color_colorblind() +
+  labs(x = "Standardized PFAS concentration\n(ppb/max(ppb))",
+       subtitle = "a) PFAS ppb",
+       color = "")
+
+pp_b = pp_check_sum_pfas$data %>% 
+  mutate(is_y_label = case_when(grepl("rep", is_y_label) ~ "*y*<sub>rep",
+                                TRUE ~ "*y*")) %>% 
+  ggplot(aes(x = value)) +
+  geom_density(aes(group = rep_id, color = is_y_label)) +
+  scale_x_log10() +
+  theme(legend.text = element_markdown(),
+        axis.text.y = element_blank(),
+        axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank()) +
+  scale_color_colorblind() +
+  labs(x = "Standardized \u221112 PFAS concentration\n(\u221112 ppb/max(\u221112 ppb))",
+       subtitle = "b) \u221112 PFAS ppb")
+
+
+pp_c = pp_check_sum_pfas_taxa$data %>% 
+  mutate(is_y_label = case_when(grepl("rep", is_y_label) ~ "*y*<sub>rep",
+                         TRUE ~ "*y*")) %>% 
+  ggplot(aes(x = value)) +
+  geom_density(aes(group = rep_id, color = is_y_label)) +
+  scale_x_log10() +
+  theme(legend.text = element_markdown(),
+        axis.text.y = element_blank(),
+        axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank()) +
+  scale_color_colorblind() +
+  labs(x = "Standardized \u221112 PFAS concentration\n(\u221112 ppb/max(\u22111 2ppb))",
+       subtitle = "c) \u221112 PFAS concentration per taxon")
+
+pp_d = pp_check_insect_mass$data %>% 
+  mutate(is_y_label = case_when(grepl("rep", is_y_label) ~ "*y*<sub>rep",
+                                TRUE ~ "*y*")) %>% 
+  ggplot(aes(x = value)) +
+  geom_density(aes(group = rep_id, color = is_y_label)) +
+  scale_x_log10() +
+  theme(legend.text = element_markdown(),
+        axis.text.y = element_blank(),
+        axis.line.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank())  +
+  scale_color_colorblind() +
+  labs(x = "Individual wet mass",
+       subtitle = "d) Mass")
+
+
+library(cowplot)
+pp_checks = plot_grid(pp_a, pp_b, pp_c, pp_d)
+
+ggsave(pp_checks, file = "plots/ms_plots_tables/pp_checks.jpg",
+       width = 8, height = 7)
+
+
+# bayes p-value -----------------------------------------------------------
+
+get_bayes_p <- function(model, response, group = NULL) {
+  data <- model$data %>%
+    add_predicted_draws(model) %>%
+    mutate(diff = .prediction - !!sym(response),
+           greater = if_else(diff > 0, 1, 0)) %>%
+    ungroup()
+  
+  if (!is.null(group)) {
+    data <- data %>%
+      group_by(across(all_of(group))) %>%
+      add_tally() %>%
+      group_by(across(all_of(c(group, "n"))))
+  } else {
+    data <- data %>%
+      add_tally() %>%
+      group_by(n)
+  }
+  
+  data %>%
+    reframe(sum = sum(greater)) %>%
+    mutate(bayes_p = sum / n)
+}
+
+
+hg4_bayes_p = get_bayes_p(model = hg4_taxon, response = "conc_ppb_s") %>% mutate(model = "PFAS ppb")
+mod1_bayes_p = get_bayes_p(model = mod1, response = "sum_ppb_s_01") %>% mutate(model = "Sum PFAS ppb")
+mod1_taxa_bayes_p = get_bayes_p(model = mod1_taxa, response = "sum_ppb_s_01") %>% mutate(model = "Sum PFAS ppb per taxon")
+mod_mass_bayes_p = get_bayes_p(model = mod_mass, response = "gdw") %>% mutate(model = "Insect mass")
+
+bayes_p = bind_rows(hg4_bayes_p,
+          mod1_bayes_p,
+          mod1_taxa_bayes_p,
+          mod_mass_bayes_p)
+
+
+write_csv(bayes_p, file = "tables/bayes_p.csv")
+
+hg4_bayes_p_type = get_bayes_p(model = hg4_taxon, response = "conc_ppb_s", group = "type_taxon") %>% mutate(model = "PFAS ppb") %>% rename(group = type_taxon)
+mod1_bayes_p_type = get_bayes_p(model = mod1, response = "sum_ppb_s_01", group = "type") %>% mutate(model = "Sum PFAS ppb") %>% rename(group = type)
+mod1_taxa_bayes_p_type = get_bayes_p(model = mod1_taxa, response = "sum_ppb_s_01", group = "type") %>% mutate(model = "Sum PFAS ppb per taxon") %>% rename(group = type)
+mod_mass_bayes_p_type = get_bayes_p(model = mod_mass, response = "gdw", group = "order") %>% mutate(model = "Insect mass") %>% rename(group = "order")
+
+bayes_p_type = bind_rows(hg4_bayes_p_type,
+                    mod1_bayes_p_type,
+                    mod1_taxa_bayes_p_type,
+                    mod_mass_bayes_p_type)
+
+write_csv(bayes_p_type, file = "tables/bayes_p_type.csv")
+
+
+# other -------------------------------------------------------------------
+
 
 merged_d2 = readRDS("data/merged_d2.rds") 
-
-pp_check(hg4_taxon) + scale_x_log10()
-# compare to the original hg4_taxon
-# pp_check(readRDS(file = "models/old/hg4_taxon.rds")) + scale_x_log10()
-
 post = hg4_taxon$data %>% 
   select(-conc_ppb_s) %>% 
   distinct() %>% 
