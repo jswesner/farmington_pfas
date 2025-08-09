@@ -6,28 +6,8 @@ library(tidybayes)
 library(ggforce)
 library(ggthemes)
 
-isotopes = read_excel("data/MergedDataFile_Farmington Stable Isotopes 2022-2023.xlsx", 
-                       sheet = "Merged Data Sheet") %>% 
-  clean_names() %>% 
-  filter(media != "Sediment") %>% 
-  filter(media != "Detritus") %>%
-  filter(!is.na(d15n)) %>% 
-  mutate(original_d15n = d15n) %>% 
-  mutate(lifestage = case_when(family != "Spider" ~ lifestage)) %>% 
-  # mutate(d15n = case_when(lifestage == "Adult" ~ d15n - 1, TRUE ~ d15n)) %>% # correct adult enrichment due to metamorphosis (Kraus et al. 2014 EST)
-  group_by(site) %>% 
-  mutate(d15n_s = scale(d15n),
-         mean_15n = mean(d15n, na.rm = T),
-         sd_15n = sd(d15n, na.rm = T),
-         mean_centered_15n = d15n - mean_15n) %>% 
-  ungroup %>% 
-  rename(taxon = family,
-         type = lifestage) %>% 
-  mutate(taxon = case_when(is.na(taxon) ~ media, TRUE ~ taxon),            # make the names match with pfas data for combining later
-         type = case_when(type == "Adult" ~ "Emergent", TRUE ~ type)) %>% 
-  mutate(type_taxon = paste0(type, "_", taxon),
-         type_taxon = str_remove(type_taxon, "NA_"),
-         type_taxon = case_when(type_taxon == "Emergent_Spider" ~ "Tetragnathidae", TRUE ~ type_taxon))
+# load data
+isotopes = readRDS(file = "data/isotopes.rds")
 
 brm_isotopes = readRDS(file = "models/brm_isotopes.rds")
 

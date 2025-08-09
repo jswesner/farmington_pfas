@@ -60,7 +60,7 @@ mean_insect_mass_pertaxon = insect_mass %>%
 write_csv(mean_insect_mass_pertaxon, file = "tables/mean_insect_mass_pertaxon.csv")
 
 hg4_taxon = readRDS(file = "models/hg4_taxon.rds")
-merged_d2 = hg4_taxon$data2$merged_d2
+merged_d2 = hg4_taxon$data2
 
 max_conc = unique(merged_d2$max_conc)
 
@@ -72,12 +72,14 @@ mean_insect_mass %>%
   geom_errorbar(aes(ymin = mean_gdw - sd_gdw, ymax = mean_gdw + sd_gdw)) +
   facet_wrap(~site)
 
-mod_mass = brm(gdw ~ order + (1 + order|site) + (1 + order|life_stage),
-               data = insect_mass,
-               family = Gamma(link = "log"),
-               prior = c(prior(normal(0, 1), class = b),
-                         prior(exponential(2), class = sd)))
-saveRDS(mod_mass, file = "models/mod_mass.rds")
+# mod_mass = brm(gdw ~ order + (1 + order|site) + (1 + order|life_stage),
+#                data = insect_mass,
+#                family = Gamma(link = "log"),
+#                prior = c(prior(normal(0, 1), class = b),
+#                          prior(exponential(2), class = sd)))
+# saveRDS(mod_mass, file = "models/mod_mass.rds")
+
+mod_mass = readRDS("models/mod_mass.rds")
 
 mean_insect_mass = insect_mass %>% 
   distinct(order, site, life_stage) %>% 
@@ -297,8 +299,6 @@ ggsave(plot_tmf_isotopes_notadjustedformetamorphosis, file = "plots/plot_tmf_iso
 mod1_taxa = readRDS(file = "models/mod1_taxa.rds") # has just the insect taxa
 mod1 = readRDS(file = "models/mod1.rds") # has biofilm and spiders 
 
-mod1
-
 iso_posts_notadjustedformetamorphosis = readRDS(file = "posteriors/iso_posts_notadjustedformetamorphosis.rds") 
 
 pfas_sum_trophic_insects = mod1_taxa$data2 %>% 
@@ -384,10 +384,11 @@ plot_tmf_sum = posts_tmf_iso_sum_summary %>%
   theme(strip.text = element_text(size = 6),
         axis.text.x = element_text(size = 7)) +
   labs(x = expression(paste(delta^{15}, "N (centered)")),
-       y = "PFAS Concentration (log10 tissue ppb)") +
+       y = "PFAS Concentration (log10 tissue ppb)",
+       subtitle = "Slope (95%CrI): 0.73 (0.39 to 1.07)") +
   NULL
 
-ggsave(plot_tmf_sum, file = "plots/plot_tmf_sum.jpg", width = 5, height = 5)
+ggsave(plot_tmf_sum, file = "plots/ms_plots_tables/plot_tmf_sum.jpg", width = 5, height = 5)
 
 # tmf slopes per site ------------------------------------------------------------------
 
@@ -472,16 +473,18 @@ tmf_slopes_overall = tmf_iso_slopes_overall %>%
   group_by(pfas_type) %>% 
   median_qi(slope)
 
-write_csv(tmf_slopes_overall, file = "tables/tmf_slopes_overall.csv")
+write_csv(tmf_slopes_overall, file = "plots/ms_plots_tables/tmf_slopes_bycompound.csv")
 
 mean_conc = attributes(pfas_conc_isotopes_notadjustedformetamorphosis$log10_median_conc_s)$`scaled:center`
 sd_conc = attributes(pfas_conc_isotopes_notadjustedformetamorphosis$log10_median_conc_s)$`scaled:scale`
 
 posts_tmf_iso_overall = brm_tmf_iso_notadjustedformetamorphosis$data %>% 
-  distinct(pfas_type) %>% 
+  distinct(pfas_type, site) %>% 
   expand_grid(mean_n15 = seq(-2, 1, length.out = 30)) %>% 
-  add_epred_draws(brm_tmf_iso_notadjustedformetamorphosis, re_formula = ~ (1 + mean_n15|pfas_type)) %>% 
+  add_epred_draws(brm_tmf_iso_notadjustedformetamorphosis, re_formula = NULL) %>% 
   mutate(.epred_log10 = (.epred*sd_conc) + mean_conc) %>% 
+  group_by(pfas_type, mean_n15, .draw) %>%
+  reframe(.epred_log10 = mean(.epred_log10)) %>% # average over sites
   group_by(pfas_type, mean_n15) %>% 
   median_qi(.epred_log10)
 
@@ -509,13 +512,59 @@ plot_tmf_overall = posts_tmf_iso_overall %>%
        y = "PFAS Concentration\n(log10 tissue ppb)") +
   NULL
 
-
 ggsave(plot_tmf_overall, file = "plots/plot_tmf_overall.jpg",
        width = 10, height = 2)
 
+brm_tmf_iso_notadjustedformetamorphosis = readRDS("models/brm_tmf_iso_notadjustedformetamorphosis.rds")
+brm_tmf_iso_raw_notadjustedformetamorphosis = brm_tmf_iso_notadjustedformetamorphosis$data %>%
+  left_join(pfas_conc_isotopes_notadjustedformetamorphosis %>% ungroup %>% distinct(site, pfas_type)) %>% 
+  mutate(.epred_log10 = (log10_median_conc_s*sd_conc) + mean_conc)
+
+# plot same but culled to PFOA, PFNA, PFUnA, PFOS
+posts_tmf_iso_overall_filtered = brm_tmf_iso_notadjustedformetamorphosis$data %>% 
+  filter(pfas_type %in% c("PFOA", "PFNA", "PFUnA", "PFOS")) %>% 
+  distinct(pfas_type, site) %>% 
+  expand_grid(mean_n15 = seq(-1.5, 1, length.out = 30)) %>% 
+  add_epred_draws(brm_tmf_iso_notadjustedformetamorphosis, re_formula = NULL) %>% 
+  mutate(.epred_log10 = (.epred*sd_conc) + mean_conc) %>% 
+  group_by(pfas_type, mean_n15, .draw) %>%
+  reframe(.epred_log10 = mean(.epred_log10)) %>% # average over sites
+  group_by(pfas_type, mean_n15) %>% 
+  median_qi(.epred_log10) %>% 
+  mutate(pfas_type = fct_relevel(pfas_type, "PFOA", "PFNA", "PFUnA", "PFOS"))
+
+plot_tmf_overall_filtered = posts_tmf_iso_overall_filtered  %>%
+  ggplot(aes(x = mean_n15, y = .epred_log10, fill = pfas_type)) +
+  geom_ribbon(aes(ymin = .lower, 
+                  ymax = .upper), alpha = 0.3) +
+  geom_line() +
+  scale_fill_custom() + 
+  scale_color_custom() +
+  facet_wrap2(~ pfas_type, nrow = 1) +
+  guides(fill = "none",
+         color = "none") +
+  geom_point(data = brm_tmf_iso_raw_notadjustedformetamorphosis %>% 
+               filter(pfas_type %in% c("PFOA", "PFNA", "PFUnA", "PFOS")) %>% 
+               mutate(pfas_type = fct_relevel(pfas_type, "PFOA", "PFNA", "PFUnA", "PFOS")),
+             aes(color = pfas_type),
+             shape = 1,
+             size = 0.5) +
+  scale_x_continuous(breaks = c(-1.5, 0, 1.5),
+                     limits = c(-1.5, 1.5)) +
+  theme(strip.text = element_text(size = 6),
+        axis.text.x = element_text(size = 7),
+        axis.title = element_text(size = 7)) +
+  labs(x = expression(paste(delta^{15}, "N (centered)")),
+       y = "PFAS Concentration\n(log10 tissue ppb)") +
+  NULL
+
+ggsave(plot_tmf_overall_filtered, file = "plots/ms_plots_tables/plot_tmf_overall_filtered.jpg",
+       width =6.5, height = 2)
+
+
 # errors in variables ---------------------------------------
 # this was not fitting efficiently - lots of high rhats even with tight priors.
-# leave it for now
+# leave it out for now
 # insect_conc_isotopes %>%
 #   filter(pfas_type == "PFOS") %>% 
 #   ggplot(aes(x = mean_n15, color = pfas_type, y = log10_mean_conc)) + 

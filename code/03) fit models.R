@@ -1,6 +1,11 @@
 library(tidyverse)
 library(brms)
 library(readxl)
+
+
+# pfas ppb ----------------------------------------------------------------
+
+
 # load data
 merged_d2 = readRDS("data/merged_d2.rds")
 
@@ -57,56 +62,10 @@ mod1_taxa = update(mod1,
 saveRDS(mod1_taxa, file = "models/mod1_taxa.rds")
 
 
-# log_kmw -----------------------------------------------------------------
-# fits baf vs log_kmw. This data is created in 05) plots and tables...
-posts_taxon_kmw_mean = readRDS(file = "posteriors/posts_taxon_kmw.rds") %>% 
-  # group_by(site, name) %>% 
-  # mutate(max_value = max(value),
-  #        value = value/max_value) %>% 
-  # group_by(log_kmw_mean, log_kmw_sd, name, draw) %>% 
-  # reframe(value = mean(value, na.rm = T)) %>% 
-  group_by(name, site) %>%
-  mutate(mean_value = mean(value),
-         value = value/mean_value) %>% 
-  ungroup() %>% 
-  group_by(log_kmw_mean, log_kmw_sd, name, site, mean_value) %>% 
-  reframe(baf_mean = mean(value),
-          baf_sd = sd(value)) %>% 
-  mutate(log_kmw_mean_s = scale(log_kmw_mean),
-         baf_site = paste(name, site, sep = "_")) 
-
-posts_taxon_kmw_mean %>% 
-  ggplot(aes(x = log_kmw_mean_s, y = baf_mean, color = site)) + 
-  geom_pointrange(aes(ymin = baf_mean - baf_sd, ymax = baf_mean + baf_sd)) +
-  facet_wrap(~name, scales = "free") +
-  scale_y_log10() +
-  geom_smooth() +
-  NULL
-
-brm_kmw = brm(baf_mean ~ s(log_kmw_mean_s, by = name) + (1|site),
-              chains = 4, 
-              iter = 2000,
-              cores = 4,
-              family = Gamma(link = "log"),
-              # prior = c(prior(normal(2.7, 2), class = "Intercept")),
-              data = posts_taxon_kmw_mean,
-              data2 = list(mean_kmw = attributes(posts_taxon_kmw_mean$log_kmw_mean_s)$'scaled:center',
-                           sd_kmw = attributes(posts_taxon_kmw_mean$log_kmw_mean_s)$'scaled:scale', 
-                           mean_y = posts_taxon_kmw_mean %>% ungroup %>% distinct(mean_value, name, site, baf_site)))
-
-saveRDS(brm_kmw, file = "models/brm_kmw.rds")
-
-pp_check(brm_kmw) + scale_x_log10()
-
-
-
 # insect mass -------------------------------------------------------------
 
 # load models and data
-insect_mass = read_excel("data/Farmington_InsectMasses.xlsx") %>% clean_names() %>% 
-  mutate(units = "grams") %>% 
-  mutate(gdw = individual_mass_ww) 
-
+insect_mass = readRDS(file = "data/insect_mass.rds")
 
 # mod_mass = brm(gdw ~ order + (1 + order|site) + (1 + order|life_stage),
 #                data = insect_mass,
@@ -159,3 +118,58 @@ insect_mass_averaged_over_sites = insect_mass %>%
           upper = quantile(.epred, probs = 0.975))
 
 saveRDS(insect_mass_averaged_over_sites, file = "posteriors/insect_mass_averaged_over_sites.rds")
+
+# tmf -----------------------------------------------------
+mod1_taxa = readRDS(file = "models/mod1_taxa.rds") # has just the insect taxa
+mod1 = readRDS(file = "models/mod1.rds") # has biofilm and spiders 
+
+iso_posts_notadjustedformetamorphosis = readRDS(file = "posteriors/iso_posts_notadjustedformetamorphosis.rds") 
+
+pfas_sum_trophic_insects = mod1_taxa$data2 %>% 
+  distinct(type, taxon, site, mean_sum_ppb) %>% 
+  add_epred_draws(mod1_taxa) %>% 
+  mutate(.epred = (.epred - 0.0001)*mean_sum_ppb) %>% 
+  group_by(type, taxon, site) %>% 
+  reframe(mean_sum = mean(.epred),
+          median_sum = median(.epred),
+          sd_sum = sd(.epred),
+          lower_sum = quantile(.epred, probs = 0.025),
+          upper_sum = quantile(.epred, probs = 0.975)) 
+
+pfas_sum_trophic_biofilm_spiders = mod1$data2 %>% 
+  distinct(type, site, mean_sum_ppb) %>% 
+  filter(type %in% c("Biofilm", "Tetragnathidae")) %>% 
+  add_epred_draws(mod1) %>% 
+  mutate(.epred = (.epred - 0.0001)*mean_sum_ppb) %>% 
+  group_by(type, site) %>% 
+  reframe(mean_sum = mean(.epred),
+          median_sum = median(.epred),
+          sd_sum = sd(.epred),
+          lower_sum = quantile(.epred, probs = 0.025),
+          upper_sum = quantile(.epred, probs = 0.975)) %>%
+  rename(taxon = type) %>% 
+  mutate(taxon = case_when(taxon == "Tetragnathidae" ~ "Spider", TRUE ~ taxon)) 
+
+pfas_sum_trophic = bind_rows(pfas_sum_trophic_insects, pfas_sum_trophic_biofilm_spiders) %>% 
+  left_join(iso_post_summaries_notadjustedformetamorphosis, relationship = "many-to-many") %>% 
+  mutate(log10_mean_sum = log10(mean_sum),
+         log10_sd_sum = sd(log10_mean_sum),
+         log10_mean_sum_s = scale(log10_mean_sum),
+         log10_median_sum = log10(median_sum),
+         log10_median_sum_s = scale(log10_median_sum)) 
+
+pfas_sum_trophic %>% 
+  ggplot(aes(x = mean_n15, y = log10_median_sum_s)) + 
+  geom_point()
+
+# fit model
+
+# brm_tmf_iso_sum = brm(log10_median_sum_s ~ mean_n15 + (1 + mean_n15|site),
+#                       data = pfas_sum_trophic,
+#                       family = gaussian(),
+#                       prior = c(prior(normal(0, 1), class = Intercept),
+#                                 prior(normal(0, 1), class = b),
+#                                 prior(exponential(2), class = sd)),
+#                       iter = 2000, chains = 4)
+# 
+# saveRDS(brm_tmf_iso_sum, file = "models/brm_tmf_iso_sum.rds")

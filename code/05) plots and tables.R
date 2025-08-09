@@ -33,12 +33,12 @@ scale_color_custom <- function() {
 
 
 make_summary_table <- function(df, center = ".epred", lower = ".lower", upper = ".upper",
-                               center_interval = "median_cri", digits = 1) {
+                               center_interval = "median_cri", digits = 2) {
   df %>%
     mutate(
-      .center_val = round(.data[[center]], digits),
-      .lower_val = round(.data[[lower]], digits),
-      .upper_val = round(.data[[upper]], digits),
+      .center_val = signif(.data[[center]], digits),
+      .lower_val = signif(.data[[lower]], digits),
+      .upper_val = signif(.data[[upper]], digits),
       center_interval = paste0(.center_val, " (", .lower_val, " to ", .upper_val, ")")) %>% 
     select(-.center_val, -.lower_val, -.upper_val)
 }
@@ -166,7 +166,7 @@ ggsave(pfas_concentration, file = "plots/ms_plots_tables/pfas_concentration_fig1
 
 # make tables
 pfas_concentrations_fig1_summary = posts_concentrations_summary %>% 
-  make_summary_table(digits = 3) %>% 
+  make_summary_table(digits = 2) %>% 
   select(pfas_type, type, center_interval) %>% 
   pivot_wider(names_from = type, values_from = center_interval) %>% 
   mutate(units = "ppb (posterior median and 95% CrI)")
@@ -184,7 +184,7 @@ pfas_concentrations_bysite_summary = posts_concentrations %>%
   median_qi(.epred) %>% 
   left_join(pfas_names) %>% 
   mutate(pfas_type = reorder(pfas_type, pfas_order)) %>% 
-  make_summary_table(digits = 3) %>% 
+  make_summary_table(digits = 2) %>% 
   select(site, pfas_type, type, center_interval) %>% 
   pivot_wider(names_from = type, values_from = center_interval) %>% 
   mutate(units = "ppb (posterior median and 95% CrI)")
@@ -270,7 +270,7 @@ ggsave(sum_pfas_overall, file = "plots/ms_plots_tables/sum_pfas_fig1.jpg", width
 
 # make tables
 sumpfas_type = posts_sumpfas_summary %>% 
-  make_summary_table(center = "sum_ppb", digits = 1) %>% 
+  make_summary_table(center = "sum_ppb", digits = 2) %>% 
   select(type, center_interval) %>% 
   mutate(taxon = case_when(type == "Emergent" ~ "Overall",
                            type == "Larval" ~ "Overall"),
@@ -351,13 +351,19 @@ ggsave(proportion_plot_fig1, file = "plots/ms_plots_tables/proportion_plot_fig1.
 
 # tables
 proportion_plot_fig1_summary = proportion_posts %>% 
-  make_summary_table() %>%
+  mutate(.epred = .epred*100,
+         .lower = .lower*100,
+         .upper = .upper*100) %>% 
+  make_summary_table(digits = 2) %>%
   rename(mean_cri = center_interval) %>% 
   select(pfas_type, type, mean_cri) %>% 
   pivot_wider(names_from = type, values_from = mean_cri) %>% 
   select(pfas_type, Water, Sediment, Detritus, Seston, Biofilm, Larval, Emergent, Tetragnathidae) %>% 
   mutate(units = "proportion of \u221112 pfas (posterior mean and 95% CrI)",
-         notes = "Summarized as mean cri to ensure that columns sum to 1. Using medians, they don't sum to 1") 
+         notes = "Summarized as mean cri to ensure that columns sum to 1. Using medians, they don't sum to 1") %>% 
+  left_join(pfas_orders) %>% 
+  arrange(order) %>% 
+  select(-order)
 
 write_csv(proportion_plot_fig1_summary , file = "plots/ms_plots_tables/proportion_plot_fig1_summary.csv")
 
@@ -452,7 +458,7 @@ ggsave(sum_ppb_by_site_fig_s1a, file = "plots/ms_plots_tables/sum_ppb_by_site_fi
 
 
 sum_ppb_by_site_summary = posts_sum_pfas_site %>% 
-  make_summary_table(center = "sum_ppb", digits = 1) %>% 
+  make_summary_table(center = "sum_ppb", digits = 2) %>% 
   select(type, site, center_interval) %>% 
   pivot_wider(names_from = site, values_from = center_interval) %>% 
   mutate(units = "\u221112 ppb (posterior median and 95% CrI)") %>% 
@@ -460,7 +466,7 @@ sum_ppb_by_site_summary = posts_sum_pfas_site %>%
   select(type, taxon, everything())
 
 sum_ppb_by_site_taxa_summary = posts_sum_pfas_taxa_site %>% 
-  make_summary_table(center = "sum_ppb", digits = 1) %>% 
+  make_summary_table(center = "sum_ppb", digits = 2) %>% 
   select(site, type, taxon, center_interval) %>% 
   pivot_wider(names_from = site, values_from = center_interval) %>% 
   mutate(units = "\u221112 ppb (posterior median and 95% CrI)")
@@ -573,7 +579,7 @@ sum_partitioning_fig2 = posts_ttf_summary_sum %>%
 ggsave(sum_partitioning_fig2, file = "plots/ms_plots_tables/sum_partitioning_fig2.jpg", width = 5, height = 5)
 
 sum_partitioning_fig2_summary = posts_ttf_summary_sum %>% 
-  make_summary_table(center = "value", digits = 1) %>% 
+  make_summary_table(center = "value", digits = 2) %>% 
   separate(name, into = c("sort", "coefficient", "source","delete", "recipient", "ttf"), remove = F) %>% 
   mutate(path = paste0(source," --> ", recipient)) %>% 
   select(path, center_interval) %>% 
@@ -614,7 +620,7 @@ sum_partitioning_taxon = posts_ttf_sum_taxon %>%
   pivot_longer(cols = c(larval, emergent, mef)) %>% 
   group_by(taxon, name) %>% 
   median_qi(value) %>% 
-  make_summary_table(center = "value", digits = 1) %>% 
+  make_summary_table(center = "value", digits = 2) %>% 
   select(taxon, name, center_interval) %>% 
   pivot_wider(names_from = name, values_from = center_interval) %>% 
   select(taxon, larval, emergent, mef)
@@ -748,7 +754,7 @@ ggsave(compound_partitioning_fig2, file = "plots/ms_plots_tables/compound_partit
 
 compound_partitioning_fig2_summary = posts_ttf_summary %>% 
   left_join(matrix_new) %>% 
-  make_summary_table(center = "value", digits = 1) %>% 
+  make_summary_table(center = "value", digits = 2) %>% 
   select(pfas_type, path, center_interval) %>% 
   pivot_wider(names_from = pfas_type, values_from = center_interval) %>% 
   mutate(units = "Partitioning (posterior median and 95% CrI)")
@@ -918,7 +924,7 @@ ggsave(change_in_body_burden_fig3, file = "plots/ms_plots_tables/change_in_body_
        width = 5, height = 3)
 
 change_in_body_burden_fig3_summary = diff_summary %>% 
-  make_summary_table(center = "diff", digits = 1) %>% 
+  make_summary_table(center = "diff", digits = 2) %>% 
   select(taxon, pfas_type, center_interval) %>% 
   pivot_wider(names_from = taxon, values_from = center_interval) %>% 
   left_join(pfas_orders) %>% 
@@ -967,7 +973,7 @@ ggsave(ratio_burden_plot, file = "plots/ms_plots_tables/ratio_burden_plot_fig3.j
 ratio_burden_plot_fig3_summary = diffs %>% 
   group_by(taxon, pfas_type) %>% 
   median_qi(ratio) %>% 
-  make_summary_table(center = "ratio", digits = 1) %>% 
+  make_summary_table(center = "ratio", digits = 2) %>% 
   select(taxon, pfas_type, center_interval) %>% 
   pivot_wider(names_from = taxon, values_from = center_interval) %>% 
   left_join(pfas_orders) %>% 
@@ -1007,7 +1013,7 @@ sum_burden_taxa_lifestage = posts_ttf_sum_taxon %>%
   pivot_longer(cols = c(emergent, larval)) %>% 
   group_by(taxon, name) %>% 
   median_qi(value) %>% 
-  make_summary_table(center = "value", digits = 0) %>% 
+  make_summary_table(center = "value", digits = 2) %>% 
   select(taxon, name, center_interval) %>% 
   pivot_wider(names_from = name, values_from = center_interval) %>% 
   filter(taxon != "Megaloptera")
@@ -1022,7 +1028,7 @@ diff_sum_burden = posts_ttf_sum_taxon %>%
 change_in_sum_body_burden = diff_sum_burden %>% 
   group_by(taxon) %>% 
   median_qi(value) %>% 
-  make_summary_table(center = "value", digits = 0) %>% 
+  make_summary_table(center = "value", digits = 2) %>% 
   filter(taxon != "Megaloptera") %>% 
   select(taxon, center_interval) %>% 
   mutate(metric = "Change in Body Burden adult:larval ng/individual")
@@ -1037,7 +1043,7 @@ ratio_sum_burden = posts_ttf_sum_taxon %>%
 ratio_in_sum_body_burden = ratio_sum_burden %>% 
   group_by(taxon) %>% 
   median_qi(value) %>% 
-  make_summary_table(center = "value", digits = 1) %>% 
+  make_summary_table(center = "value", digits = 2) %>% 
   filter(taxon != "Megaloptera") %>% 
   select(taxon, center_interval) %>% 
   mutate(metric = "Change in Body Burden adult:larval ng/individual")
@@ -1137,7 +1143,8 @@ post_hus = posts_concentrations %>%
 prob_labels = post_hus %>% 
   group_by(pfas_type) %>% 
   reframe(Water = mean(Water),
-          Larval = mean(Larval))
+          Larval = mean(Larval),
+          Biofilm = mean(Biofilm))
 
 prob_detect_average = post_hus %>% 
   ggplot(aes(x = 1 - Water, y = 1 - Larval, color = pfas_type)) + 
@@ -1150,12 +1157,42 @@ prob_detect_average = post_hus %>%
          fill = "none") +
   geom_abline(linetype = "dashed") +
   geom_label(data = prob_labels, aes(label = pfas_type, fill = pfas_type), 
-             color = "white", size = 3) +
+             color = "white", size = 2.3) +
   scale_fill_custom() +
-  labs(x = "Probability of Detection in Water",
-       y = "Probability of Detection in Larval Insects")
+  labs(x = "P(Detect) in Water",
+       y = "P(Detect) in Larval Insects")
 
+prob_detect_water_biofilm = post_hus %>% 
+  ggplot(aes(x = 1 - Water, y = 1 - Biofilm, color = pfas_type)) + 
+  geom_point(shape = 20, alpha = 0.5, size = 0.2) +
+  # facet_wrap(~pfas_type) +
+  scale_color_custom() +
+  # scale_y_log10() +
+  # scale_x_log10() +
+  guides(color = "none",
+         fill = "none") +
+  geom_abline(linetype = "dashed") +
+  geom_label(data = prob_labels, aes(label = pfas_type, fill = pfas_type), 
+             color = "white", size = 2.3) +
+  scale_fill_custom() +
+  labs(x = "P(Detect) in Water",
+       y = "P(Detect) in Biofilm")
 
+prob_detect_biofilm_larvae = post_hus %>% 
+  ggplot(aes(x = 1 - Biofilm, y = 1 - Larval, color = pfas_type)) + 
+  geom_point(shape = 20, alpha = 0.5, size = 0.2) +
+  # facet_wrap(~pfas_type) +
+  scale_color_custom() +
+  # scale_y_log10() +
+  # scale_x_log10() +
+  guides(color = "none",
+         fill = "none") +
+  geom_abline(linetype = "dashed") +
+  geom_label(data = prob_labels, aes(label = pfas_type, fill = pfas_type), 
+             color = "white", size = 2.3) +
+  scale_fill_custom() +
+  labs(x = "P(Detect) in Biofilm",
+       y = "P(Detect) in Larvae")
 
 # prob detect by site
 post_hus_site = posts_concentrations %>% 
@@ -1184,10 +1221,10 @@ prob_detect_site = post_hus_site %>%
   geom_abline(linetype = "dashed") +
   geom_label(data = prob_labels_site, aes(label = pfas_type, fill = pfas_type), 
              color = "white", 
-             size = 2) +
+             size = 2.3) +
   scale_fill_custom() +
-  labs(x = "Probability of Detection in Water",
-       y = "Probability of Detection in Larval Insects")
+  labs(x = "P(Detect) in Water",
+       y = "P(Detect) in Larval Insects")
 
 
 library(cowplot)
@@ -1197,12 +1234,6 @@ ggsave(prob_detect_water_larvae, file = "plots/prob_detect_water_larvae.jpg", wi
 
 
 # prob_detect larvae to emerger
-post_hus = posts_concentrations %>% 
-  ungroup %>% 
-  filter(.draw <= 1000) %>% 
-  group_by(type, pfas_type, .draw) %>% 
-  reframe(hu = mean(hu)) %>% 
-  pivot_wider(names_from = type, values_from = hu)
 
 prob_labels_larv_emerge = post_hus %>% 
   group_by(pfas_type) %>% 
@@ -1220,10 +1251,10 @@ prob_detect_average_larv_emerge = post_hus %>%
          fill = "none") +
   geom_abline(linetype = "dashed") +
   geom_label(data = prob_labels_larv_emerge, aes(label = pfas_type, fill = pfas_type), 
-             color = "white", size = 3) +
+             color = "white", size = 2.3) +
   scale_fill_custom() +
-  labs(x = "Probability of Detection in Larval Insects",
-       y = "Probability of Detection in Emergent Insects")
+  labs(x = "P(Detect) in Larval Insects",
+       y = "P(Detect) in Emergent Insects")
 
 
 # prob_detect_by site 
@@ -1252,10 +1283,10 @@ prob_detect_site_larv_emerge = post_hus_site %>%
   geom_abline(linetype = "dashed") +
   geom_label(data = prob_labels_site_larv_emerge, aes(label = pfas_type, fill = pfas_type), 
              color = "white", 
-             size = 2) +
+             size = 2.3) +
   scale_fill_custom() +
-  labs(x = "Probability of Detection in Larval Insects",
-       y = "Probability of Detection in Emergent Insects")
+  labs(x = "P(Detect) in Larval Insects",
+       y = "P(Detect) in Emergent Insects")
 
 
 library(cowplot)
@@ -1266,15 +1297,6 @@ ggsave(prob_detect_larv_emerge, file = "plots/prob_detect_larv_emerge.jpg", widt
 
 
 # prob_detect emerger to spider
-
-post_hus = posts_concentrations %>% 
-  ungroup %>% 
-  filter(.draw <= 1000) %>% 
-  group_by(type, pfas_type, site, .draw) %>% 
-  reframe(hu = mean(hu)) %>% 
-  group_by(type, pfas_type, .draw) %>% 
-  reframe(hu = mean(hu)) %>% 
-  pivot_wider(names_from = type, values_from = hu)
 
 prob_labels_spider_emerge = post_hus %>% 
   group_by(pfas_type) %>% 
@@ -1292,10 +1314,10 @@ prob_detect_average_spider_emerge = post_hus %>%
          fill = "none") +
   geom_abline(linetype = "dashed") +
   geom_label(data = prob_labels_spider_emerge, aes(label = pfas_type, fill = pfas_type), 
-             color = "white", size = 3) +
+             color = "white", size = 2.3) +
   scale_fill_custom() +
-  labs(y = "Probability of Detection in Tetragnathid Spiders",
-       x = "Probability of Detection in Emergent Insects")
+  labs(y = "P(Detect) in Tetragnathid Spiders",
+       x = "P(Detect) in Emergent Insects")
 
 
 # prob_detect_by site 
@@ -1322,12 +1344,13 @@ prob_detect_site_spider_emerge = post_hus_site %>%
   guides(color = "none",
          fill = "none") +
   geom_abline(linetype = "dashed") +
-  geom_label(data = prob_labels_site_spider_emerge, aes(label = pfas_type, fill = pfas_type), 
+  geom_label(data = prob_labels_site_spider_emerge, 
+             aes(label = pfas_type, fill = pfas_type), 
              color = "white", 
-             size = 2) +
+             size = 2.3) +
   scale_fill_custom() +
-  labs(y = "Probability of Detection in Tetragnathid Spiders",
-       x = "Probability of Detection in Emergent Insects")
+  labs(y = "P(Detect) in Tetragnathid Spiders",
+       x = "P(Detect) in Emergent Insects")
 
 
 library(cowplot)
@@ -1338,17 +1361,129 @@ ggsave(prob_detect_spider_emerge, file = "plots/prob_detect_spider_emerge.jpg", 
 
 # fig4_combined -----------------------------------------------------------
 
-fig4a = prob_detect_average + labs(subtitle = "a)")
-fig4b = prob_detect_average_larv_emerge + labs(subtitle = "b)")
-fig4c = prob_detect_average_spider_emerge + labs(subtitle = "c)")
+fig4a = prob_detect_water_biofilm + labs(subtitle = "a)")
+fig4b = prob_detect_biofilm_larvae + labs(subtitle = "b)")
+fig4c = prob_detect_average_larv_emerge + labs(subtitle = "c)")
+fig4d = prob_detect_average_spider_emerge + labs(subtitle = "d)")
 
-fig4_combined = plot_grid(fig4a, fig4b, fig4c, ncol = 1)
+fig4_combined = plot_grid(fig4a, fig4b, fig4c, fig4d, ncol = 1)
 
-ggsave(fig4_combined, file = "plots/ms_plots_tables/fig4_combined.jpg", width = 6, height = 11,
+ggsave(fig4_combined, file = "plots/ms_plots_tables/fig4_combined.jpg", width = 4, height = 11,
        dpi = 400)
 
 
-# Tables ------------------------------------------------------------------
+
+# figx_TMF ----------------------------------------------------------------
+
+brm_tmf_iso_notadjustedformetamorphosis = readRDS("models/brm_tmf_iso_notadjustedformetamorphosis.rds")
+brm_tmf_iso_raw_notadjustedformetamorphosis = brm_tmf_iso_notadjustedformetamorphosis$data %>%
+  left_join(pfas_conc_isotopes_notadjustedformetamorphosis %>% ungroup %>% distinct(site, pfas_type)) %>% 
+  mutate(.epred_log10 = (log10_median_conc_s*sd_conc) + mean_conc)
+
+# plot same but culled to PFOA, PFNA, PFUnA, PFOS
+posts_tmf_iso_overall_filtered = brm_tmf_iso_notadjustedformetamorphosis$data %>% 
+  filter(pfas_type %in% c("PFOA", "PFNA", "PFUnA", "PFOS")) %>% 
+  distinct(pfas_type, site) %>% 
+  expand_grid(mean_n15 = seq(-1.5, 1, length.out = 30)) %>% 
+  add_epred_draws(brm_tmf_iso_notadjustedformetamorphosis, re_formula = NULL) %>% 
+  mutate(.epred_log10 = (.epred*sd_conc) + mean_conc) %>% 
+  group_by(pfas_type, mean_n15, .draw) %>%
+  reframe(.epred_log10 = mean(.epred_log10)) %>% # average over sites
+  group_by(pfas_type, mean_n15) %>% 
+  median_qi(.epred_log10) %>% 
+  mutate(pfas_type = fct_relevel(pfas_type, "PFOA", "PFNA", "PFUnA", "PFOS"))
+
+plot_tmf_overall_filtered = posts_tmf_iso_overall_filtered  %>%
+  ggplot(aes(x = mean_n15, y = .epred_log10, fill = pfas_type)) +
+  geom_ribbon(aes(ymin = .lower, 
+                  ymax = .upper), alpha = 0.3) +
+  geom_line() +
+  scale_fill_custom() + 
+  scale_color_custom() +
+  facet_wrap2(~ pfas_type, nrow = 1) +
+  guides(fill = "none",
+         color = "none") +
+  geom_point(data = brm_tmf_iso_raw_notadjustedformetamorphosis %>% 
+               filter(pfas_type %in% c("PFOA", "PFNA", "PFUnA", "PFOS")) %>% 
+               mutate(pfas_type = fct_relevel(pfas_type, "PFOA", "PFNA", "PFUnA", "PFOS")),
+             aes(color = pfas_type),
+             shape = 1,
+             size = 0.5) +
+  scale_x_continuous(breaks = c(-1.5, 0, 1.5),
+                     limits = c(-1.5, 1.5)) +
+  theme(strip.text = element_text(size = 6),
+        axis.text.x = element_text(size = 7),
+        axis.title = element_text(size = 7)) +
+  labs(x = expression(paste(delta^{15}, "N (centered)")),
+       y = "PFAS Concentration\n(log10 tissue ppb)") +
+  NULL
+
+ggsave(plot_tmf_overall_filtered, file = "plots/ms_plots_tables/plot_tmf_overall_filtered.jpg",
+       width =6.5, height = 2)
+
+tmf_iso_slopes_bycompound = brm_tmf_iso_notadjustedformetamorphosis$data2 %>%
+  distinct(site, pfas_type, center_15n) %>%
+  expand_grid(mean_n15 = seq(-2, 1.4, length.out = 2)) %>% # 3.4 per mill difference = 1 trophic level. Use -2 and 1.4 to keep within the values of centered n15
+  # expand_grid(mean_n15 = seq(0, 1, length.out = 2)) %>%
+  add_epred_draws(brm_tmf_iso_notadjustedformetamorphosis, re_formula = NULL) %>%
+  ungroup %>%
+  select(-.row, -.chain, -.iteration) %>%
+  mutate(.epred = 10^.epred) %>%
+  pivot_wider(names_from = mean_n15, values_from = .epred) %>%
+  mutate(slope = `1.4`/`-2`) %>%  # multiplicative change per trophic level (same as this: 10^(`1.4` - `-2`))
+  group_by(.draw, pfas_type) %>%
+  reframe(slope = mean(slope))
+
+tmf_slopes_bycompound = tmf_iso_slopes_bycompound %>% 
+  group_by(pfas_type) %>% 
+  median_qi(slope)
+
+write_csv(tmf_slopes_bycompound, file = "plots/ms_plots_tables/tmf_slopes_bycompound.csv")
+
+
+# figx_TMF_sum ------------------------------------------------------------
+
+brm_tmf_iso_sum = readRDS("models/brm_tmf_iso_sum.rds")
+
+posts_tmf_iso_sum = brm_tmf_iso_sum$data2 %>% 
+  filter(site != "Russell Brook") %>% 
+  distinct(site) %>% 
+  mutate(center_sum = attributes(brm_tmf_iso_sum$data2$log10_median_sum_s)$`scaled:center`,
+         scale_sum = attributes(brm_tmf_iso_sum$data2$log10_median_sum_s)$`scaled:scale`) %>% 
+  expand_grid(mean_n15 = seq(min(brm_tmf_iso_sum$data$mean_n15),
+                             max(brm_tmf_iso_sum$data$mean_n15), 
+                             length.out = 30)) %>% 
+  add_epred_draws(brm_tmf_iso_sum, re_formula = NULL) %>% 
+  group_by(mean_n15, .draw) %>% 
+  reframe(.epred = mean(.epred),
+          .epred_log10 = (.epred*scale_sum) + center_sum)
+
+
+posts_tmf_iso_sum_summary = posts_tmf_iso_sum %>% 
+  group_by(mean_n15) %>% 
+  median_qi(.epred_log10)
+
+plot_tmf_sum = posts_tmf_iso_sum_summary %>% 
+  ggplot(aes(x = mean_n15, y = .epred_log10)) +
+  geom_ribbon(aes(ymin = .lower, 
+                  ymax = .upper), alpha = 0.3) +
+  geom_line() +
+  guides(fill = "none",
+         color = "none") +
+  geom_point(data = brm_tmf_iso_sum$data2,
+             aes(y = log10_median_sum),
+             shape = 1,
+             size = 1) +
+  theme(strip.text = element_text(size = 6),
+        axis.text.x = element_text(size = 7)) +
+  labs(x = expression(paste(delta^{15}, "N (centered)")),
+       y = "PFAS Concentration (log10 tissue ppb)",
+       subtitle = "Slope (95%CrI): 0.73 (0.39 to 1.07)") +
+  NULL
+
+ggsave(plot_tmf_sum, file = "plots/ms_plots_tables/plot_tmf_sum.jpg", width = 5, height = 5)
+
+# Other Tables ------------------------------------------------------------------
 
 insect_mass_per_taxon = readRDS(file = "posteriors/insect_mass_averaged_over_sites.rds") %>% 
   clean_names() %>% 
