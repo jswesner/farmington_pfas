@@ -59,3 +59,13 @@ Examples of subtracting the mean n15 or c13 to allow across site comparisons:
   year={2012},
   publisher={Wiley Online Library}
 }
+
+
+2025-06-11: USGS data. Ground water and surface water. 2) Food web. 3) stable isotopes. 4) body mass.
+
+Analysis - do sumpfas vs n15
+Analysis - Convert per mil TMF to per trophic-level tmf. This is harder than it sounds. Well, converting is easy, but interpretation is difficult. If we use biofilm as a baseline, then the trophic levels only range from ~ 1(biofilm) to 1.3. Doing it another way, we can keep n15 on the plots as the x-axis, and instead just calculate what a per trophic level increase would be.
+
+2025-07-22: The models for hg4_taxon and sum pfas all had the wrong data. They did not have the updated data with lower non-detects that Jess had sent in April. I re-ran them with the data from Jess sent on 7/21/2025 and re-made the plots and tables. Results are very close to the originals.
+
+2025-07-23: In writing the models, I noticed that the prior intercept was originally normal(0,1), which would center the prior on exp(0) = 1. However, the data are scaled so that the maximum value is 1 in the response. So this prior doesn't make sense. I re-fit with -2,1, which places most of the weight on small values ~1/10th of the maximum value. 

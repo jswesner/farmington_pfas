@@ -2,7 +2,6 @@ library(tidyverse)
 library(brms)
 library(readxl)
 
-
 # pfas ppb ----------------------------------------------------------------
 
 
@@ -119,11 +118,116 @@ insect_mass_averaged_over_sites = insect_mass %>%
 
 saveRDS(insect_mass_averaged_over_sites, file = "posteriors/insect_mass_averaged_over_sites.rds")
 
-# tmf -----------------------------------------------------
+# isotopes N15 only -------------------------------------------------------
+
+# load data
+isotopes = readRDS(file = "data/isotopes.rds")
+
+brm_isotopes_notadjustedformetamorphosis = brm(mean_centered_15n ~ taxon + (1 + taxon|site),
+                                               family = gaussian(),
+                                               prior = c(prior(normal(0, 1), class = Intercept),
+                                                         prior(normal(0, 1), class = b),
+                                                         prior(exponential(2), class = sd)),
+                                               data = isotopes)
+
+saveRDS(brm_isotopes_notadjustedformetamorphosis, file = "models/brm_isotopes_notadjustedformetamorphosis.rds")
+plot(conditional_effects(brm_isotopes_notadjustedformetamorphosis), points = T)
+
+# posteriors 
+brm_isotopes_notadjustedformetamorphosis = readRDS(file = "models/brm_isotopes_notadjustedformetamorphosis.rds")
+
+baseline_n15 = readRDS(file = "posteriors/iso_posts_notadjustedformetamorphosis.rds") %>% 
+  filter(taxon == "Biofilm") %>% 
+  mutate(baseline_n15_raw = .epred + center_15n) %>% 
+  ungroup %>% 
+  select(site, .draw, baseline_n15_raw) 
+
+iso_posts_notadjustedformetamorphosis = isotopes %>%
+  distinct(taxon, site, mean_15n) %>% 
+  rename(center_15n = mean_15n) %>% 
+  add_epred_draws(brm_isotopes_notadjustedformetamorphosis, re_formula = ~ NULL) %>% 
+  group_by(taxon) %>% 
+  mutate(median = median(.epred)) %>% 
+  left_join(baseline_n15) %>% 
+  mutate(raw_n15 = .epred + center_15n,
+         trophic_level = 1 + (raw_n15 - baseline_n15_raw)/3.4)
+
+saveRDS(iso_posts_notadjustedformetamorphosis, file = "posteriors/iso_posts_notadjustedformetamorphosis.rds")
+# tmf per pfas ------------------------------------------------
+iso_posts_notadjustedformetamorphosis = readRDS(file = "posteriors/iso_posts_notadjustedformetamorphosis.rds") 
+
+pfas_posts = merged_d2 %>% 
+  distinct(site, type_taxon, taxon, type, max_conc, pfas_type) %>% 
+  filter(type != "Sediment") %>% 
+  filter(type != "Detritus") %>%
+  filter(type != "Water") %>% 
+  filter(type != "Seston") %>% 
+  mutate(taxon = case_when(is.na(taxon) ~ type,TRUE ~ taxon)) %>% 
+  add_epred_draws(hg4_taxon, re_formula = NULL) %>% 
+  mutate(.epred = .epred*max_conc) 
+
+iso_post_summaries_notadjustedformetamorphosis = iso_posts_notadjustedformetamorphosis %>% 
+  group_by(taxon, site, center_15n) %>% 
+  reframe(mean_n15 = mean(.epred),
+          median_n15 = median(.epred),
+          sd_n15 = sd(.epred),
+          lower_n15 = quantile(.epred, probs = 0.025),
+          upper_n15 = quantile(.epred, probs = 0.975)) %>% 
+  filter(site != "Russell Brook") # No spiders and only 2 dots for insects
+
+saveRDS(iso_post_summaries_notadjustedformetamorphosis, file = "posteriors/iso_post_summaries_notadjustedformetamorphosis.rds")
+
+pfas_conc_isotopes_notadjustedformetamorphosis = pfas_posts %>% 
+  filter(site != "Russell Brook") %>% # only 2 data points. Can fit regression here and model below was having trouble so I removed.
+  group_by(site, taxon, type, pfas_type)  %>% 
+  reframe(mean_conc = mean(.epred),
+          median_conc = median(.epred),
+          sd_conc = sd(.epred),
+          lower_conc = quantile(.epred, probs = 0.025),
+          upper_conc = quantile(.epred, probs = 0.975)) %>% 
+  left_join(iso_post_summaries_notadjustedformetamorphosis, relationship = "many-to-many") %>% 
+  mutate(log10_mean_conc = log10(mean_conc),
+         log10_sd_conc = sd(log10_mean_conc),
+         log10_mean_conc_s = scale(log10_mean_conc),
+         log10_median_conc = log10(median_conc),
+         log10_median_conc_s = scale(log10_median_conc)) 
+
+saveRDS(pfas_conc_isotopes_notadjustedformetamorphosis, "data/pfas_conc_isotopes_notadjustedformetamorphosis.rds")
+
+pfas_conc_isotopes_notadjustedformetamorphosis %>%
+  filter(site == "Burr Pond Brook") %>%
+  filter(pfas_type == "PFOS") %>% 
+  ggplot(aes(x = mean_n15, color = pfas_type, y = log10_median_conc)) + 
+  geom_point() +
+  # geom_text(aes(label = taxon)) +
+  facet_grid2(site ~ pfas_type, scales = "free_y") +
+  scale_color_custom() +
+  # scale_y_log10() +
+  # scale_x_log10() +
+  guides(fill = "none",
+         color = "none") +
+  # geom_smooth(method = lm, se = T) +
+  NULL
+
+# fit model
+
+# brm_tmf_iso_notadjustedformetamorphosis = brm(log10_median_conc_s ~ mean_n15 + (1 + mean_n15|site) + (1 + mean_n15|pfas_type),
+#                   data = pfas_conc_isotopes_notadjustedformetamorphosis,
+#                   family = gaussian(),
+#                   prior = c(prior(normal(0, 1), class = Intercept),
+#                              prior(normal(0, 1), class = b),
+#                              prior(exponential(2), class = sd)),
+#                   iter = 2000, chains = 4)
+# 
+# saveRDS(brm_tmf_iso_notadjustedformetamorphosis, file = "models/brm_tmf_iso_notadjustedformetamorphosis.rds")
+
+brm_tmf_iso_notadjustedformetamorphosis = readRDS(file = "models/brm_tmf_iso_notadjustedformetamorphosis.rds")
+# tmf sum -----------------------------------------------------
+
+iso_post_summaries_notadjustedformetamorphosis = readRDS(file = "posteriors/iso_post_summaries_notadjustedformetamorphosis.rds")
+
 mod1_taxa = readRDS(file = "models/mod1_taxa.rds") # has just the insect taxa
 mod1 = readRDS(file = "models/mod1.rds") # has biofilm and spiders 
-
-iso_posts_notadjustedformetamorphosis = readRDS(file = "posteriors/iso_posts_notadjustedformetamorphosis.rds") 
 
 pfas_sum_trophic_insects = mod1_taxa$data2 %>% 
   distinct(type, taxon, site, mean_sum_ppb) %>% 
@@ -156,7 +260,8 @@ pfas_sum_trophic = bind_rows(pfas_sum_trophic_insects, pfas_sum_trophic_biofilm_
          log10_sd_sum = sd(log10_mean_sum),
          log10_mean_sum_s = scale(log10_mean_sum),
          log10_median_sum = log10(median_sum),
-         log10_median_sum_s = scale(log10_median_sum)) 
+         log10_median_sum_s = scale(log10_median_sum)) %>% 
+  filter(site != "Russell Brook") # No spiders and only 2 dots for insects
 
 pfas_sum_trophic %>% 
   ggplot(aes(x = mean_n15, y = log10_median_sum_s)) + 
@@ -173,3 +278,29 @@ pfas_sum_trophic %>%
 #                       iter = 2000, chains = 4)
 # 
 # saveRDS(brm_tmf_iso_sum, file = "models/brm_tmf_iso_sum.rds")
+
+brm_tmf_iso_sum = readRDS("models/brm_tmf_iso_sum.rds")
+
+# isotopes C13 N15 multivariate ----------------------------------------------------------------
+isotopes = readRDS("data/isotopes.rds")
+
+# filter for just spiders and emergers. Remove Russell Brook b/c it only has 1 emerger value and no spiders measured
+isotopes_filtered = isotopes %>% 
+  filter(sample_type %in% c("Spider", "Emergent Diptera", "Emergent Ephemeroptera", "Emergend Odonata", "Emergent Plecoptera",
+                            "Emergent Trichoptera")) %>% 
+  filter(site != "Russell Brook")
+
+# fit_model
+brm_isotopes = brm(bf(mvbind(d13c, d15n) ~ sample_type + (1 + sample_type|site),
+              set_rescor(TRUE)), 
+           data = isotopes, 
+           prior = c(prior(normal(0,1), class = Intercept, resp = c("d13c", "d15n")),
+                     prior(normal(0,1), class = b, resp = c("d13c", "d15n")),
+                     prior(exponential(2), class = sigma, resp = c("d13c", "d15n"))),
+           chains = 4, 
+           cores = 4)
+
+saveRDS(brm_isotopes, file = "models/brm_isotopes.rds")
+brm_isotopes = readRDS(file = "models/brm_isotopes.rds")
+
+

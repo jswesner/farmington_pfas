@@ -220,6 +220,8 @@ pfas_conc_isotopes_notadjustedformetamorphosis = pfas_posts %>%
          log10_median_conc = log10(median_conc),
          log10_median_conc_s = scale(log10_median_conc)) 
 
+saveRDS(pfas_conc_isotopes_notadjustedformetamorphosis, "data/pfas_conc_isotopes_notadjustedformetamorphosis.rds")
+
 pfas_conc_isotopes_notadjustedformetamorphosis %>%
   # mutate(range = upper_conc - lower_conc) %>% arrange(-range) %>% select(range)
   # filter(site == "Burr Pond Brook") %>% 
