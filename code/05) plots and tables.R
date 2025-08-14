@@ -1565,7 +1565,8 @@ iso_posts = brm_isotopes$data %>%
           d15n_lower = quantile(d15n, probs = 0.025),
           d15n_upper = quantile(d15n, probs = 0.975)) %>% 
   mutate(sample_type = str_replace(sample_type, "Emergent", "Adult")) %>% 
-  mutate(sample_type = fct_relevel(sample_type, "Spider"))
+  mutate(sample_type = fct_relevel(sample_type, "Spider", "Adult Trichoptera", "Adult Plecoptera", "Adult Odonata", "Adult Ephemeroptera",
+                                   "Adult Diptera"))
 
 isotope_biplot = iso_posts %>% 
   ggplot(aes(x = d13c_median, y = d15n_median, color = sample_type, group = sample_type)) + 
@@ -1580,7 +1581,7 @@ isotope_biplot = iso_posts %>%
   theme(legend.text = element_text(size = 8),
         legend.position = "top",
         legend.title = element_blank()) +
-  scale_color_manual(values = c("black", "#8DD3C7", "#FDB462", "#FCCDE5", "#B3DE69")) + # mimic colors in Figure 3
+  scale_color_manual(values = c("black", "#B3DE69", "#FCCDE5","#8DA0CB", "#FDB462", "#8DD3C7")) + # mimic colors in Figure 3
   # geom_point(data = brm_isotopes$data) +
   NULL
 

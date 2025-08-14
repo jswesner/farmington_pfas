@@ -2,14 +2,22 @@ library(tidyverse)
 library(brms)
 library(readxl)
 
+#~~~~This code fits eight models and takes ~20 hours to run. It also requires and installation of rstan. 
+#~~~~The model codes are silenced with "#". The fitted models can instead be loaded directly below:
+hg4_taxon = readRDS(file = "models/hg4_taxon.rds")    # pfas ppb
+mod1 = readDRS(file = "models/mod1.rds")              # sum pfas
+mod1_taxa = readRDS(file = "models/mod1_taxa.rds")    # sum pfas per taxon
+mod_mass = readRDS(file = "models/mod_mass.rds")      # insect mass
+brm_isotopes_notadjustedformetamorphosis = readRDS(file = "models/brm_isotopes_notadjustedformetamorphosis.rds")  # isotopes for n15 only
+brm_tmf_iso_notadjustedformetamorphosis = readRDS(file = "models/brm_tmf_iso_notadjustedformetamorphosis.rds")    # tmf per pfas
+brm_tmf_iso_sum = readRDS("models/brm_tmf_iso_sum.rds")   # tmf for sum pfas
+brm_isotopes = readRDS(file = "models/brm_isotopes.rds")  # isotopes c13 and n15 multivariate (bi-plot)
+
 # pfas ppb ----------------------------------------------------------------
-
-
 # load data
 merged_d2 = readRDS("data/merged_d2.rds")
 
 # fit model
-# hg4 = readRDS(file = "models/hg4.rds")
 # 
 # hg4_taxon <- brm(bf(conc_ppb_s ~ type_taxon + (1 + type_taxon|site) + (1 + type_taxon|pfas_type),
 #               hu ~ type_taxon + (1 + type_taxon|site) + (1 + type_taxon|pfas_type)),
@@ -26,39 +34,32 @@ merged_d2 = readRDS("data/merged_d2.rds")
 # 
 # saveRDS(hg4_taxon, file = "models/hg4_taxon.rds")
 
-# hg4_taxon = readRDS(file = "models/hg4_taxon.rds")
+hg4_taxon = readRDS(file = "models/hg4_taxon.rds")
 
-hg4_taxon = update(hg4_taxon, newdata = merged_d2, iter = 2000 , chains = 4, cores = 4,
-                   data2 = merged_d2)
-
-hg4_taxon_unfiltered = update(hg4_taxon, 
-                              newdata = readRDS("data/merged_d2_unfiltered.rds"), 
-                              iter = 500 , chains = 1, cores = 4,
-                              data2 = list(merged_d2_unfiltered = readRDS("data/merged_d2_unfiltered.rds")))
 
 # sum pfas ----------------------------------------------------------------
 merged_d2_sum = readRDS(file = "data/merged_d2_sum.rds")
 
 
-mod1 = brm(sum_ppb_s_01 ~ type + (1 + type|site),
-           family = Gamma(link = "log"),
-           prior = c(prior(normal(0, 1), class = "Intercept"),
-                     prior(normal(0, 1), class = "b"),
-                     prior(exponential(2), class = "sd")),
-           data = d2_sum, cores = 4, 
-           data2 = merged_d2_sum)
-
-saveRDS(mod1, file = "models/mod1.rds")
+# mod1 = brm(sum_ppb_s_01 ~ type + (1 + type|site),
+#            family = Gamma(link = "log"),
+#            prior = c(prior(normal(0, 1), class = "Intercept"),
+#                      prior(normal(0, 1), class = "b"),
+#                      prior(exponential(2), class = "sd")),
+#            data = d2_sum, cores = 4, 
+#            data2 = merged_d2_sum)
+# 
+# saveRDS(mod1, file = "models/mod1.rds")
 
 
 merged_d2_sum_taxa = readRDS(file = "data/merged_d2_sum_taxa.rds")
 
-mod1_taxa = update(mod1, 
-                   formula = sum_ppb_s_01 ~ type + (1 + type|site) + (1 + type|taxon),
-                   newdata = d2_sum_taxa,
-           data2 = merged_d2_sum_taxa)
-
-saveRDS(mod1_taxa, file = "models/mod1_taxa.rds")
+# mod1_taxa = update(mod1, 
+#                    formula = sum_ppb_s_01 ~ type + (1 + type|site) + (1 + type|taxon),
+#                    newdata = d2_sum_taxa,
+#            data2 = merged_d2_sum_taxa)
+# 
+# saveRDS(mod1_taxa, file = "models/mod1_taxa.rds")
 
 
 # insect mass -------------------------------------------------------------
@@ -123,15 +124,15 @@ saveRDS(insect_mass_averaged_over_sites, file = "posteriors/insect_mass_averaged
 # load data
 isotopes = readRDS(file = "data/isotopes.rds")
 
-brm_isotopes_notadjustedformetamorphosis = brm(mean_centered_15n ~ taxon + (1 + taxon|site),
-                                               family = gaussian(),
-                                               prior = c(prior(normal(0, 1), class = Intercept),
-                                                         prior(normal(0, 1), class = b),
-                                                         prior(exponential(2), class = sd)),
-                                               data = isotopes)
-
-saveRDS(brm_isotopes_notadjustedformetamorphosis, file = "models/brm_isotopes_notadjustedformetamorphosis.rds")
-plot(conditional_effects(brm_isotopes_notadjustedformetamorphosis), points = T)
+# brm_isotopes_notadjustedformetamorphosis = brm(mean_centered_15n ~ taxon + (1 + taxon|site),
+#                                                family = gaussian(),
+#                                                prior = c(prior(normal(0, 1), class = Intercept),
+#                                                          prior(normal(0, 1), class = b),
+#                                                          prior(exponential(2), class = sd)),
+#                                                data = isotopes)
+# 
+# saveRDS(brm_isotopes_notadjustedformetamorphosis, file = "models/brm_isotopes_notadjustedformetamorphosis.rds")
+# plot(conditional_effects(brm_isotopes_notadjustedformetamorphosis), points = T)
 
 # posteriors 
 brm_isotopes_notadjustedformetamorphosis = readRDS(file = "models/brm_isotopes_notadjustedformetamorphosis.rds")
@@ -153,6 +154,7 @@ iso_posts_notadjustedformetamorphosis = isotopes %>%
          trophic_level = 1 + (raw_n15 - baseline_n15_raw)/3.4)
 
 saveRDS(iso_posts_notadjustedformetamorphosis, file = "posteriors/iso_posts_notadjustedformetamorphosis.rds")
+
 # tmf per pfas ------------------------------------------------
 iso_posts_notadjustedformetamorphosis = readRDS(file = "posteriors/iso_posts_notadjustedformetamorphosis.rds") 
 
@@ -286,21 +288,21 @@ isotopes = readRDS("data/isotopes.rds")
 
 # filter for just spiders and emergers. Remove Russell Brook b/c it only has 1 emerger value and no spiders measured
 isotopes_filtered = isotopes %>% 
-  filter(sample_type %in% c("Spider", "Emergent Diptera", "Emergent Ephemeroptera", "Emergend Odonata", "Emergent Plecoptera",
+  filter(sample_type %in% c("Spider", "Emergent Diptera", "Emergent Ephemeroptera", "Emergent Odonata", "Emergent Plecoptera",
                             "Emergent Trichoptera")) %>% 
   filter(site != "Russell Brook")
 
 # fit_model
-brm_isotopes = brm(bf(mvbind(d13c, d15n) ~ sample_type + (1 + sample_type|site),
-              set_rescor(TRUE)), 
-           data = isotopes, 
-           prior = c(prior(normal(0,1), class = Intercept, resp = c("d13c", "d15n")),
-                     prior(normal(0,1), class = b, resp = c("d13c", "d15n")),
-                     prior(exponential(2), class = sigma, resp = c("d13c", "d15n"))),
-           chains = 4, 
-           cores = 4)
-
-saveRDS(brm_isotopes, file = "models/brm_isotopes.rds")
+# brm_isotopes = brm(bf(mvbind(d13c, d15n) ~ sample_type + (1 + sample_type|site),
+#               set_rescor(TRUE)), 
+#            data = isotopes_filtered, 
+#            prior = c(prior(normal(0,1), class = Intercept, resp = c("d13c", "d15n")),
+#                      prior(normal(0,1), class = b, resp = c("d13c", "d15n")),
+#                      prior(exponential(2), class = sigma, resp = c("d13c", "d15n"))),
+#            chains = 4, 
+#            cores = 4)
+# 
+# saveRDS(brm_isotopes, file = "models/brm_isotopes.rds")
 brm_isotopes = readRDS(file = "models/brm_isotopes.rds")
 
 
