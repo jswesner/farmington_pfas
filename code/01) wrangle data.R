@@ -128,7 +128,7 @@ saveRDS(insect_mass, file = "data/insect_mass.rds")
 
 # isotopes ----------------------------------------------------------------
 
-isotopes = read_excel("data/MergedDataFile_Farmington Stable Isotopes 2022-2023.xlsx", 
+isotopes = read_excel("data/Farmington_PFAS_Stable Isotopes_Datarelease.xlsx", 
                       sheet = "Merged Data Sheet") %>% 
   clean_names() %>% 
   filter(media != "Sediment") %>% 
