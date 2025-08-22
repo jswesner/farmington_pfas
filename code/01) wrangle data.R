@@ -120,7 +120,7 @@ merged_d2_sum_taxa = read_csv("data/Farmington_PFAS_FWstudy_Datarelease.csv") %>
 saveRDS(merged_d2_sum_taxa, file = "data/merged_d2_sum_taxa.rds")
 
 # insect mass -------------------------------------------------------------
-insect_mass = read_excel("data/Farmington_InsectMasses.xlsx") %>% clean_names() %>% 
+insect_mass = read_csv("data/Farmington_InsectMasses.csv") %>% clean_names() %>% 
   mutate(units = "grams") %>% 
   mutate(gdw = individual_mass_ww) 
 
@@ -128,8 +128,7 @@ saveRDS(insect_mass, file = "data/insect_mass.rds")
 
 # isotopes ----------------------------------------------------------------
 
-isotopes = read_excel("data/Farmington_PFAS_Stable Isotopes_Datarelease.xlsx", 
-                      sheet = "Merged Data Sheet") %>% 
+isotopes = read_csv("data/Farmington_PFAS_Stable Isotopes_Datarelease.csv") %>% 
   clean_names() %>% 
   filter(media != "Sediment") %>% 
   filter(media != "Detritus") %>%
@@ -140,8 +139,10 @@ isotopes = read_excel("data/Farmington_PFAS_Stable Isotopes_Datarelease.xlsx",
   group_by(site) %>% 
   mutate(d15n_s = scale(d15n),
          mean_15n = mean(d15n, na.rm = T),
+         mean_13c = mean(d13c, na.rm = T),
          sd_15n = sd(d15n, na.rm = T),
-         mean_centered_15n = d15n - mean_15n) %>% 
+         mean_centered_15n = d15n - mean_15n,
+         mean_centered_13c = d13c - mean_13c) %>% 
   ungroup %>% 
   rename(taxon = family,
          type = lifestage) %>% 

@@ -290,19 +290,19 @@ isotopes = readRDS("data/isotopes.rds")
 isotopes_filtered = isotopes %>% 
   filter(sample_type %in% c("Spider", "Emergent Diptera", "Emergent Ephemeroptera", "Emergent Odonata", "Emergent Plecoptera",
                             "Emergent Trichoptera")) %>% 
-  filter(site != "Russell Brook")
+  filter(site != "Russell Brook") %>% 
+  mutate(d13c = mean_centered_13c,
+         d15n = mean_centered_15n)
 
 # fit_model
 # brm_isotopes = brm(bf(mvbind(d13c, d15n) ~ sample_type + (1 + sample_type|site),
-#               set_rescor(TRUE)), 
-#            data = isotopes_filtered, 
+#               set_rescor(TRUE)),
+#            data = isotopes_filtered,
 #            prior = c(prior(normal(0,1), class = Intercept, resp = c("d13c", "d15n")),
 #                      prior(normal(0,1), class = b, resp = c("d13c", "d15n")),
 #                      prior(exponential(2), class = sigma, resp = c("d13c", "d15n"))),
-#            chains = 4, 
+#            chains = 4,
 #            cores = 4)
 # 
 # saveRDS(brm_isotopes, file = "models/brm_isotopes.rds")
 brm_isotopes = readRDS(file = "models/brm_isotopes.rds")
-
-

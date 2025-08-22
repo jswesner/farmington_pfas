@@ -1447,6 +1447,10 @@ tmf_sum_slope_summary = tmf_sum_slopes %>%
   median_qi(slope) %>% 
   mutate(pfas_type = "sum_pfas")
 
+sum(tmf_sum_slopes$slope > 0)/nrow(tmf_sum_slopes)
+
+as_tibble(bayes_R2(brm_tmf_iso_sum))
+
 # figx_TMF per pfas----------------------------------------------------------------
 
 brm_tmf_iso_notadjustedformetamorphosis = readRDS("models/brm_tmf_iso_notadjustedformetamorphosis.rds")
@@ -1454,8 +1458,10 @@ brm_tmf_iso_raw_notadjustedformetamorphosis = brm_tmf_iso_notadjustedformetamorp
   left_join(readRDS("data/pfas_conc_isotopes_notadjustedformetamorphosis.rds") %>% ungroup %>% distinct(site, pfas_type)) %>% 
   mutate(.epred_log10 = (log10_median_conc_s*sd_conc) + mean_conc)
 
-mean_conc = attributes(pfas_conc_isotopes_notadjustedformetamorphosis$log10_median_conc_s)$`scaled:center`
-sd_conc = attributes(pfas_conc_isotopes_notadjustedformetamorphosis$log10_median_conc_s)$`scaled:scale`
+pfas_conc_isotopes = readRDS("data/pfas_conc_isotopes_notadjustedformetamorphosis.rds")
+
+mean_conc = attributes(pfas_conc_isotopes$log10_median_conc_s)$`scaled:center`
+sd_conc = attributes(pfas_conc_isotopes$log10_median_conc_s)$`scaled:scale`
 
 # plot same but culled to PFOA, PFNA, PFUnA, PFOS
 posts_tmf_iso_overall_filtered = brm_tmf_iso_notadjustedformetamorphosis$data %>% 
@@ -1518,6 +1524,11 @@ tmf_slopes_bycompound = tmf_iso_slopes_bycompound %>%
 
 write_csv(tmf_slopes_bycompound, file = "plots/ms_plots_tables/tmf_slopes_bycompound.csv")
 
+tmf_iso_slopes_bycompound %>% 
+  group_by(pfas_type) %>% 
+  reframe(prob_greater = sum(slope > 0)/max(.draw))
+
+bayes_R2(brm_tmf_iso_notadjustedformetamorphosis)
 
 # Other Tables ------------------------------------------------------------------
 
@@ -1550,20 +1561,26 @@ brm_isotopes = readRDS(file = "models/brm_isotopes.rds")
 library(tidybayes)
 library(ggthemes)
 
-iso_posts = brm_isotopes$data %>% 
-  distinct(site, sample_type) %>% 
+iso_posts = brm_isotopes$data2 %>% 
+  distinct(site, sample_type, mean_15n, mean_13c) %>% 
   add_epred_draws(brm_isotopes) %>% 
   ungroup %>% 
   mutate(site = fct_relevel(site, "Burr Pond Brook", "Hop Brook", "Ratlum Brook", "Pequabuck River")) %>% 
-  select(site, sample_type, .category, .draw, .epred) %>% 
+  select(site, sample_type, .category, .draw, .epred, mean_15n, mean_13c) %>% 
   pivot_wider(names_from = .category, values_from = .epred) %>% 
   group_by(site, sample_type) %>% 
-  reframe(d13c_median = median(d13c),
-          d13c_lower = quantile(d13c, probs = 0.025),
-          d13c_upper = quantile(d13c, probs = 0.975),
-          d15n_median = median(d15n),
-          d15n_lower = quantile(d15n, probs = 0.025),
-          d15n_upper = quantile(d15n, probs = 0.975)) %>% 
+  reframe(d13c_median = median(d13c + mean_13c),
+          d13c_lower = quantile(d13c + mean_13c, probs = 0.025),
+          d13c_upper = quantile(d13c + mean_13c, probs = 0.975),
+          d15n_median = median(d15n + mean_15n),
+          d15n_lower = quantile(d15n + mean_15n, probs = 0.025),
+          d15n_upper = quantile(d15n + mean_15n, probs = 0.975),
+          d13c_median_c = median(d13c),
+          d13c_lower_c = quantile(d13c, probs = 0.025),
+          d13c_upper_c = quantile(d13c, probs = 0.975),
+          d15n_median_c = median(d15n),
+          d15n_lower_c = quantile(d15n, probs = 0.025),
+          d15n_upper_c = quantile(d15n, probs = 0.975)) %>% 
   mutate(sample_type = str_replace(sample_type, "Emergent", "Adult")) %>% 
   mutate(sample_type = fct_relevel(sample_type, "Spider", "Adult Trichoptera", "Adult Plecoptera", "Adult Odonata", "Adult Ephemeroptera",
                                    "Adult Diptera"))
@@ -1586,3 +1603,66 @@ isotope_biplot = iso_posts %>%
   NULL
 
 ggsave(isotope_biplot, file = "plots/ms_plots_tables/isotope_biplot.jpg", dpi = 400, width = 6.5, height = 5)
+
+
+isotope_biplot_singlepanel_each_site = iso_posts %>% 
+  ggplot(aes(x = d13c_median_c, y = d15n_median_c, color = sample_type, group = sample_type)) + 
+  geom_point(aes(color = sample_type, shape = site)) + 
+  geom_errorbar(aes(ymin = d15n_lower_c, ymax = d15n_upper_c)) + 
+  geom_errorbarh(aes(xmin = d13c_lower_c, xmax = d13c_upper_c)) +
+  # facet_wrap(~site, nrow = 1) + 
+  scale_shape_manual(values = c(16, 17, 15, 18)) +
+  labs(color = "Organism",
+       x = expression(paste(delta^{13}, "C")),
+       y = expression(paste(delta^{15}, "N"))) +
+  theme(legend.text = element_text(size = 8),
+        legend.title = element_blank()) +
+  scale_color_manual(values = c("black", "#B3DE69", "#FCCDE5","#8DA0CB", "#FDB462", "#8DD3C7")) + # mimic colors in Figure 3
+  # geom_point(data = brm_isotopes$data) +
+  NULL
+
+ggsave(isotope_biplot_singlepanel_each_site,
+       file = "plots/ms_plots_tables/isotope_biplot_singlepanel_each_site.jpg",
+       dpi = 400, width = 6.5, height = 6)
+
+
+# iso biplot averaged over sites
+iso_posts_siteaverage = brm_isotopes$data2 %>% 
+  distinct(site, sample_type, mean_15n, mean_13c) %>% 
+  add_epred_draws(brm_isotopes) %>% 
+  ungroup %>% 
+  mutate(site = fct_relevel(site, "Burr Pond Brook", "Hop Brook", "Ratlum Brook", "Pequabuck River")) %>% 
+  select(sample_type, .category, .draw, .epred) %>% 
+  group_by(sample_type, .category, .draw) %>% 
+  reframe(.epred = mean(.epred)) %>% # average over sites
+  pivot_wider(names_from = .category, values_from = .epred) %>% 
+  group_by(sample_type) %>% 
+  reframe(d13c_median_c = median(d13c),
+          d13c_lower_c = quantile(d13c, probs = 0.025),
+          d13c_upper_c = quantile(d13c, probs = 0.975),
+          d15n_median_c = median(d15n),
+          d15n_lower_c = quantile(d15n, probs = 0.025),
+          d15n_upper_c = quantile(d15n, probs = 0.975)) %>% 
+  mutate(sample_type = str_replace(sample_type, "Emergent", "Adult")) %>% 
+  mutate(sample_type = fct_relevel(sample_type, "Spider", "Adult Trichoptera", "Adult Plecoptera", "Adult Odonata", "Adult Ephemeroptera",
+                                   "Adult Diptera"))
+
+
+isotope_biplot_siteaveraged = iso_posts_siteaverage %>% 
+  ggplot(aes(x = d13c_median_c, y = d15n_median_c, color = sample_type, group = sample_type)) + 
+  geom_point(aes(color = sample_type)) + 
+  geom_errorbar(aes(ymin = d15n_lower_c, ymax = d15n_upper_c)) + 
+  geom_errorbarh(aes(xmin = d13c_lower_c, xmax = d13c_upper_c)) +
+  scale_shape_manual(values = c(16, 17, 15, 18)) +
+  labs(color = "Organism",
+       x = expression(paste(delta^{13}, "C")),
+       y = expression(paste(delta^{15}, "N"))) +
+  theme(legend.text = element_text(size = 8),
+        legend.title = element_blank()) +
+  scale_color_manual(values = c("black", "#B3DE69", "#FCCDE5","#8DA0CB", "#FDB462", "#8DD3C7")) + # mimic colors in Figure 3
+  NULL
+
+
+ggsave(isotope_biplot_siteaveraged,
+       file = "plots/ms_plots_tables/isotope_biplot_siteaveraged.jpg",
+       dpi = 400, width = 6.5, height = 6)
