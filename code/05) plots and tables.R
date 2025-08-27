@@ -485,6 +485,7 @@ write_csv(sum_ppb_by_site_figs1a_summary, file = "plots/ms_plots_tables/sum_ppb_
 
 # sum partitioning (fig 2) ------------------------------------------------
 mod1 = readRDS(file = "models/mod1.rds")
+mod1_taxa = readRDS(file = "models/mod1_taxa.rds")
 
 # raw ttf sum averaged over sites
 raw_ttf_sum = as_tibble(mod1$data) %>% 
@@ -597,6 +598,19 @@ sum_partitioning_fig2_summary = posts_ttf_summary_sum %>%
   rename(median_cri = center_interval)
 
 write_csv(sum_partitioning_fig2_summary, file = "plots/ms_plots_tables/sum_partitioning_fig2_summary.csv")
+
+sum_partitioning_fig2_summary_log10 = posts_ttf_summary_sum %>% 
+  mutate(value = log10(value),
+         .lower = log10(.lower),
+         .upper = log10(.upper)) %>% 
+  make_summary_table(center = "value", digits = 2) %>% 
+  separate(name, into = c("sort", "coefficient", "source","delete", "recipient", "ttf"), remove = F) %>% 
+  mutate(path = paste0(source," --> ", recipient)) %>% 
+  select(path, center_interval) %>% 
+  mutate(units = "partitioning coefficients (median and 95% CrI)") %>% 
+  rename(median_cri = center_interval)
+
+write_csv(sum_partitioning_fig2_summary_log10, file = "plots/ms_plots_tables/sum_partitioning_fig2_summary_log10.csv")
 
 
 # mef by taxon -----------------------------------------------
@@ -772,6 +786,35 @@ compound_partitioning_fig2_summary = posts_ttf_summary %>%
   mutate(units = "Partitioning (posterior median and 95% CrI)")
 
 write_csv(compound_partitioning_fig2_summary, file = "plots/ms_plots_tables/compound_partitioning_fig2_summary.csv")
+
+compound_partitioning_fig2_summary_log10 = posts_ttf_summary %>% 
+  mutate(value = log10(value),
+         .lower = log10(.lower),
+         .upper = log10(.upper)) %>% 
+  left_join(matrix_new) %>% 
+  make_summary_table(center = "value", digits = 2) %>% 
+  select(pfas_type, path, center_interval) %>% 
+  pivot_wider(names_from = pfas_type, values_from = center_interval) %>% 
+  mutate(units = "Partitioning (posterior median and 95% CrI)")
+
+write_csv(compound_partitioning_fig2_summary_log10, file = "plots/ms_plots_tables/compound_partitioning_fig2_summary_log10.csv")
+
+# combine sum and per pfas partitioning
+sum_partitioning_fig2_summary_log10 = read_csv(file = "plots/ms_plots_tables/sum_partitioning_fig2_summary_log10.csv")
+compound_partitioning_fig2_summary_log10 = read_csv(file = "plots/ms_plots_tables/compound_partitioning_fig2_summary_log10.csv")
+
+partitioning_table = compound_partitioning_fig2_summary_log10 %>% left_join(sum_partitioning_fig2_summary_log10 %>% select(path, median_cri) %>% 
+                                                         rename(sum_pfas = median_cri)) %>% 
+  select(-units) %>% 
+  pivot_longer(cols = -path) %>% 
+  filter(grepl("water", path)) %>% 
+  pivot_wider(names_from = path, values_from = value) %>%
+  rename(pfas_type = name) %>% 
+  left_join(pfas_orders %>% add_row(pfas_type = "sum_pfas", order = 0)) %>% 
+  arrange(order) %>% 
+  select(pfas_type, `water --> sediment`, `water --> detritus`, `water --> seston`, everything(), -order)
+
+write_csv(partitioning_table, file = "plots/ms_plots_tables/partitioning_table.csv")
 
 # fig2_combined -----------------------------------------------------------
 library(cowplot)
