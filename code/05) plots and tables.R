@@ -110,7 +110,7 @@ posts_taxon_type_summary = posts_taxon_type %>%
 posts_concentrations = mod_dat %>%
   select(-contains("conc_ppb")) %>%
   distinct() %>%
-  # mutate(site = "new") %>% 
+  filter(!type %in% c("Detritus", "Seston", "Sediment")) %>% 
   add_epred_draws(seed = 20202, hg4_taxon, re_formula = NULL, dpar = T, ndraws = 500) %>%
   mutate(.epred = .epred*unique(hg4_taxon$data2$max_conc_ppb)) 
 
@@ -127,7 +127,8 @@ posts_concentrations_summary = posts_concentrations %>%
   mutate(pfas_type = reorder(pfas_type, pfas_order)) %>% 
   mutate(type = case_when(type == "Emergent" ~ "Adult", T ~ type))
   
-pfas_concentration = mod_dat %>% 
+pfas_concentration = mod_dat %>%
+  filter(!type %in% c("Detritus", "Seston", "Sediment")) %>% 
   mutate(type = case_when(type == "Emergent" ~ "Adult", T ~ type)) %>% 
   ggplot(aes(x = reorder(type, order), y = conc_ppb + 1)) + 
   geom_jitter(width = 0.2, height = 0, alpha = 0.6, shape = 1,
@@ -146,21 +147,21 @@ pfas_concentration = mod_dat %>%
        x = "") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.3)) +
   guides(color = "none") +
+  # geom_line(data = posts_concentrations_summary %>% 
+  #             mutate(group = "lines") %>% 
+  #             filter(type %in% c("Water", "Sediment", "Larval", "Emergent", "Tetragnathidae")),
+  #           aes(group = group, y = .epred + 1),
+  #           linetype = "dashed") +
+  # geom_line(data = posts_concentrations_summary %>% 
+  #             mutate(group = "lines") %>% filter(type %in% c("Water", "Detritus", "Larval", "Emergent", "Tetragnathidae")),
+  #           aes(group = group, y = .epred + 1),
+  #           linetype = "dotted") +
+  # geom_line(data = posts_concentrations_summary %>% 
+  #             mutate(group = "lines") %>% filter(type %in% c("Water", "Seston", "Larval", "Emergent", "Tetragnathidae")),
+  #           aes(group = group, y = .epred + 1),
+  #           linetype = "dotdash") +
   geom_line(data = posts_concentrations_summary %>% 
-              mutate(group = "lines") %>% 
-              filter(type %in% c("Water", "Sediment", "Larval", "Emergent", "Tetragnathidae")),
-            aes(group = group, y = .epred + 1),
-            linetype = "dashed") +
-  geom_line(data = posts_concentrations_summary %>% 
-              mutate(group = "lines") %>% filter(type %in% c("Water", "Detritus", "Larval", "Emergent", "Tetragnathidae")),
-            aes(group = group, y = .epred + 1),
-            linetype = "dotted") +
-  geom_line(data = posts_concentrations_summary %>% 
-              mutate(group = "lines") %>% filter(type %in% c("Water", "Seston", "Larval", "Emergent", "Tetragnathidae")),
-            aes(group = group, y = .epred + 1),
-            linetype = "dotdash") +
-  geom_line(data = posts_concentrations_summary %>% 
-              mutate(group = "lines") %>% filter(type %in% c("Water", "Biofilm", "Larval", "Emergent", "Tetragnathidae")),
+              mutate(group = "lines") %>% filter(type %in% c("Water", "Biofilm", "Larval", "Adult", "Tetragnathidae")),
             aes(group = group, y = .epred + 1)) +
   NULL
 
@@ -206,7 +207,8 @@ posts_sumpfas = mod1$data %>%
                            type == "Seston" ~ 4,
                            type == "Larval" ~ 6,
                            type == "Emergent" ~ 7,
-                           type == "Tetragnathidae" ~ 8)) %>% 
+                           type == "Tetragnathidae" ~ 8)) %>%
+  filter(!type %in% c("Detritus", "Seston", "Sediment")) %>% 
   add_epred_draws(seed = 20202, mod1, re_formula = NULL) %>% 
   mutate(sum_ppb = (.epred - 0.0001)*unique(mod1_taxa$data2$mean_sum_ppb)) %>% 
   mutate(sum_ppb = case_when(sum_ppb < 0.000101 ~ 0, TRUE ~ sum_ppb - 0.0001)) %>% 
@@ -225,7 +227,8 @@ posts_taxa_sumpfas = mod1_taxa$data2 %>%
                            type == "Seston" ~ 4,
                            type == "Larval" ~ 6,
                            type == "Emergent" ~ 7,
-                           type == "Tetragnathidae" ~ 8)) %>% 
+                           type == "Tetragnathidae" ~ 8)) %>%
+  filter(!type %in% c("Detritus", "Seston", "Sediment")) %>% 
   add_epred_draws(mod1_taxa) %>% 
   mutate(sum_ppb = (.epred - 0.0001)*unique(mod1_taxa$data2$mean_sum_ppb)) %>% 
   mutate(.epred = case_when(sum_ppb < 0.000101 ~ 0, TRUE ~ sum_ppb - 0.0001)) %>% 
@@ -256,16 +259,16 @@ sum_pfas_overall = posts_sumpfas_summary %>%
   stat_pointinterval(data = posts_taxa_sumpfas, aes(fill = taxon),
                      shape = 21, .width = 0,
                      position = position_jitter(width = 0.1, height = 0)) +
-  geom_line(data = line_posts %>% filter(type %in% c("Water", "Sediment", "Larval", "Emergent", "Tetragnathidae")),
-            aes(group = group),
-            linetype = "dashed") +
-  geom_line(data = line_posts %>% filter(type %in% c("Water", "Detritus", "Larval", "Emergent", "Tetragnathidae")),
-            aes(group = group),
-            linetype = "dotted") +
-  geom_line(data = line_posts %>% filter(type %in% c("Water", "Seston", "Larval", "Emergent", "Tetragnathidae")),
-            aes(group = group),
-            linetype = "dotdash") +
-  geom_line(data = line_posts %>% filter(type %in% c("Water", "Biofilm", "Larval", "Emergent", "Tetragnathidae")),
+  # geom_line(data = line_posts %>% filter(type %in% c("Water", "Sediment", "Larval", "Emergent", "Tetragnathidae")),
+  #           aes(group = group),
+  #           linetype = "dashed") +
+  # geom_line(data = line_posts %>% filter(type %in% c("Water", "Detritus", "Larval", "Emergent", "Tetragnathidae")),
+  #           aes(group = group),
+  #           linetype = "dotted") +
+  # geom_line(data = line_posts %>% filter(type %in% c("Water", "Seston", "Larval", "Emergent", "Tetragnathidae")),
+  #           aes(group = group),
+  #           linetype = "dotdash") +
+  geom_line(data = line_posts %>% filter(type %in% c("Water", "Biofilm", "Larval", "Adult", "Tetragnathidae")),
             aes(group = group)) + 
   scale_fill_viridis_d(begin = 0.3) +
   NULL
@@ -302,7 +305,7 @@ sum_pfas_fig1_summary_taxa = posts_taxa_sumpfas %>%
   make_summary_table(center = "sum_ppb") %>% 
   select(type, taxon, center_interval) %>% 
   pivot_wider(names_from = type, values_from = center_interval) %>% 
-  select(taxon, Larval, Emergent) %>% 
+  select(taxon, Larval, Adult) %>% 
   mutate(units = "\u221112 ppb (posterior median and 95% CrI)")
 
 write_csv(sum_pfas_fig1_summary_taxa, file = "plots/ms_plots_tables/sum_pfas_fig1_summary_taxa.csv")
@@ -312,7 +315,8 @@ write_csv(sum_pfas_fig1_summary_taxa, file = "plots/ms_plots_tables/sum_pfas_fig
 posts_concentrations = mod_dat %>%
   select(-contains("conc_ppb")) %>%
   distinct() %>%
-  # mutate(site = "new") %>% 
+  # mutate(site = "new") %>%
+  filter(!type %in% c("Detritus", "Seston", "Sediment")) %>% 
   add_epred_draws(seed = 20202, hg4_taxon, re_formula = NULL, dpar = T, ndraws = 500) %>%
   mutate(.epred = .epred*unique(hg4_taxon$data2$max_conc_ppb)) %>% 
   mutate(type = case_when(type == "Emergent" ~ "Adult", T ~ type))
@@ -333,7 +337,7 @@ proportion_posts = posts_concentrations %>%
   group_by(pfas_type, type) %>% 
   mean_qi(.epred) %>% 
   mutate(type = as.factor(type),
-         type = fct_relevel(type, "Water", "Sediment", "Detritus", "Seston", "Biofilm", "Larval", "Adult",
+         type = fct_relevel(type, "Water", "Biofilm", "Larval", "Adult",
                             "Tetragnathidae"))
 
 proportion_plot_fig1 = proportion_posts %>% 
@@ -363,7 +367,7 @@ proportion_plot_fig1_summary = proportion_posts %>%
   rename(mean_cri = center_interval) %>% 
   select(pfas_type, type, mean_cri) %>% 
   pivot_wider(names_from = type, values_from = mean_cri) %>% 
-  select(pfas_type, Water, Sediment, Detritus, Seston, Biofilm, Larval, Emergent, Tetragnathidae) %>% 
+  select(pfas_type, Water, Sediment, Detritus, Seston, Biofilm, Larval, Adult, Tetragnathidae) %>% 
   mutate(units = "proportion of \u221112 pfas (posterior mean and 95% CrI)",
          notes = "Summarized as mean cri to ensure that columns sum to 1. Using medians, they don't sum to 1") %>% 
   left_join(pfas_orders) %>% 
@@ -446,16 +450,16 @@ sum_ppb_by_site_fig_s1a = posts_sum_pfas_site %>%
         legend.title = element_blank()) +
   geom_point(data = posts_sum_pfas_taxa_site, aes(color = taxon, shape = taxon),
                      size = 1) +
-  geom_line(data = line_posts_site %>% filter(type %in% c("Water", "Sediment", "Larval", "Emergent", "Tetragnathidae")),
+  geom_line(data = line_posts_site %>% filter(type %in% c("Water", "Sediment", "Larval", "Adult", "Tetragnathidae")),
             aes(group = group),
             linetype = "dashed") +
-  geom_line(data = line_posts_site %>% filter(type %in% c("Water", "Detritus", "Larval", "Emergent", "Tetragnathidae")),
+  geom_line(data = line_posts_site %>% filter(type %in% c("Water", "Detritus", "Larval", "Adult", "Tetragnathidae")),
             aes(group = group),
             linetype = "dotted") +
-  geom_line(data = line_posts_site %>% filter(type %in% c("Water", "Seston", "Larval", "Emergent", "Tetragnathidae")),
+  geom_line(data = line_posts_site %>% filter(type %in% c("Water", "Seston", "Larval", "Adult", "Tetragnathidae")),
             aes(group = group),
             linetype = "dotdash") +
-  geom_line(data = line_posts_site %>% filter(type %in% c("Water", "Biofilm", "Larval", "Emergent", "Tetragnathidae")),
+  geom_line(data = line_posts_site %>% filter(type %in% c("Water", "Biofilm", "Larval", "Adult", "Tetragnathidae")),
             aes(group = group)) + 
   scale_color_viridis_d(begin = 0.2, end = 0.8) +
   facet_wrap(~site, nrow = 1) +
@@ -655,7 +659,7 @@ write_csv(sum_partitioning_taxon, file = "plots/ms_plots_tables/sum_partitioning
 # ppb perpfas by taxon ------------------------------------------------------------
 
 perpfas_taxon_summary = posts_taxon %>% 
-  filter(type %in% c("Emergent", "Larval")) %>% 
+  filter(type %in% c("Adult", "Larval")) %>% 
   group_by(type, taxon, pfas_type, pfas_order, .draw) %>% 
   reframe(.epred = mean(.epred)) %>%  # average over sites
   group_by(type, taxon, pfas_type, pfas_order) %>% 
@@ -1292,8 +1296,9 @@ ggsave(prob_detect_water_larvae, file = "plots/prob_detect_water_larvae.jpg", wi
 
 prob_labels_larv_emerge = post_hus %>% 
   group_by(pfas_type) %>% 
-  reframe(Emergent = mean(Emergent),
-          Larval = mean(Larval))
+  reframe(Adult = mean(Emergent),
+          Larval = mean(Larval)) %>% 
+  mutate(Emergent = Adult)
 
 prob_detect_average_larv_emerge = post_hus %>% 
   ggplot(aes(x = 1 - Larval, y = 1 - Emergent, color = pfas_type)) + 
@@ -1323,8 +1328,9 @@ post_hus_site = posts_concentrations %>%
 
 prob_labels_site_larv_emerge = post_hus_site %>% 
   group_by(pfas_type, site) %>% 
-  reframe(Emergent = mean(Emergent),
-          Larval = mean(Larval))
+  reframe(Adult = mean(Emergent),
+          Larval = mean(Larval)) %>% 
+  mutate(Emergent = Adult)
 
 prob_detect_site_larv_emerge = post_hus_site %>% 
   ggplot(aes(x = 1 - Larval, y = 1 - Emergent, color = pfas_type)) + 
@@ -1355,8 +1361,9 @@ ggsave(prob_detect_larv_emerge, file = "plots/prob_detect_larv_emerge.jpg", widt
 
 prob_labels_spider_emerge = post_hus %>% 
   group_by(pfas_type) %>% 
-  reframe(Emergent = mean(Emergent),
-          Tetragnathidae = mean(Tetragnathidae))
+  reframe(Adult = mean(Emergent),
+          Tetragnathidae = mean(Tetragnathidae))%>% 
+  mutate(Emergent = Adult)
 
 prob_detect_average_spider_emerge = post_hus %>% 
   ggplot(aes(y = 1 - Tetragnathidae, x = 1 - Emergent, color = pfas_type)) + 
@@ -1386,8 +1393,9 @@ post_hus_site = posts_concentrations %>%
 
 prob_labels_site_spider_emerge = post_hus_site %>% 
   group_by(pfas_type, site) %>% 
-  reframe(Emergent = mean(Emergent),
-          Tetragnathidae = mean(Tetragnathidae))
+  reframe(Adult = mean(Emergent),
+          Tetragnathidae = mean(Tetragnathidae)) %>% 
+  mutate(Emergent = Adult)
 
 prob_detect_site_spider_emerge = post_hus_site %>% 
   ggplot(aes(y = 1 - Tetragnathidae, x = 1 - Emergent, color = pfas_type)) + 
@@ -1421,9 +1429,273 @@ fig4b = prob_detect_biofilm_larvae + labs(subtitle = "b)")
 fig4c = prob_detect_average_larv_emerge + labs(subtitle = "c)")
 fig4d = prob_detect_average_spider_emerge + labs(subtitle = "d)")
 
-fig4_combined = plot_grid(fig4a, fig4b, fig4c, fig4d, ncol = 1)
+fig4_combined = plot_grid(fig4a, fig4b, fig4c, fig4d, ncol = 2)
 
-ggsave(fig4_combined, file = "plots/ms_plots_tables/fig4_combined.jpg", width = 4, height = 11,
+ggsave(fig4_combined, file = "plots/ms_plots_tables/fig4_combined.jpg", width = 8, height = 8,
+       dpi = 400)
+
+
+# fig4_concentrations -----------------------------------------------------
+
+# consability of detection ------------------------------------------------
+post_mus = posts_concentrations %>% 
+  ungroup %>% 
+  filter(.draw <= 1000) %>% 
+  group_by(type, pfas_type, site, .draw) %>% 
+  reframe(.epred = median(.epred)) %>% 
+  group_by(type, pfas_type, .draw) %>% 
+  reframe(.epred = median(.epred)) %>%
+  pivot_wider(names_from = type, values_from = .epred)
+
+cons_labels = post_mus %>% 
+  group_by(pfas_type) %>% 
+  reframe(Water = median(Water),
+          Larval = median(Larval),
+          Biofilm = median(Biofilm))
+
+cons_average = post_mus %>% 
+  ggplot(aes(x = Water, y = Larval, color = pfas_type)) + 
+  geom_point(shape = 20, alpha = 0.5, size = 0.2) +
+  # facet_wrap(~pfas_type) +
+  scale_color_custom() +
+  scale_y_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"),limits = c(0.00001, 20)) +
+  scale_x_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"), limits = c(0.00001, 20)) +
+  guides(color = "none",
+         fill = "none") +
+  geom_abline(linetype = "dashed") +
+  geom_label(data = cons_labels, aes(label = pfas_type, fill = pfas_type), 
+             color = "white", size = 2.3) +
+  scale_fill_custom() +
+  labs(x = "Concentration in Water (ppb)",
+       y = "Concentration in Larval Insects (ppb)")
+
+cons_water_biofilm = post_mus %>% 
+  ggplot(aes(x = Water, y = Biofilm, color = pfas_type)) + 
+  geom_point(shape = 20, alpha = 0.5, size = 0.2) +
+  # facet_wrap(~pfas_type) +
+  scale_color_custom() +
+  scale_y_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
+  scale_x_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
+  guides(color = "none",
+         fill = "none") +
+  geom_abline(linetype = "dashed") +
+  geom_label(data = cons_labels, aes(label = pfas_type, fill = pfas_type), 
+             color = "white", size = 2.3) +
+  scale_fill_custom() +
+  labs(x = "Concentration in Water (ppb)",
+       y = "Concentration in Biofilm (ppb)")
+
+cons_biofilm_larvae = post_mus %>% 
+  ggplot(aes(x = Biofilm, y = Larval, color = pfas_type)) + 
+  geom_point(shape = 20, alpha = 0.5, size = 0.2) +
+  # facet_wrap(~pfas_type) +
+  scale_color_custom() +
+  scale_y_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
+  scale_x_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
+  guides(color = "none",
+         fill = "none") +
+  geom_abline(linetype = "dashed") +
+  geom_label(data = cons_labels, aes(label = pfas_type, fill = pfas_type), 
+             color = "white", size = 2.3) +
+  scale_fill_custom() +
+  labs(x = "Concentration in Biofilm (ppb)",
+       y = "Concentration in Larvae (ppb)")
+
+# cons detect by site
+post_mus_site = posts_concentrations %>% 
+  ungroup %>% 
+  filter(.draw <= 1000) %>% 
+  group_by(type, pfas_type, site, .draw) %>% 
+  # reframe(.epred = median(.epred)) %>% 
+  # group_by(type, pfas_type, .draw) %>% 
+  reframe(.epred = median(.epred)) %>% 
+  pivot_wider(names_from = type, values_from = .epred)
+
+cons_labels_site = post_mus_site %>% 
+  group_by(pfas_type, site) %>% 
+  reframe(Water = median(Water),
+          Larval = median(Larval))
+
+cons_site = post_mus_site %>% 
+  ggplot(aes(x = Water, y = Larval, color = pfas_type)) + 
+  geom_point(shape = 20, alpha = 0.5, size = 0.2) +
+  facet_wrap(~site) +
+  scale_color_custom() +
+  scale_y_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
+  scale_x_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
+  guides(color = "none",
+         fill = "none") +
+  geom_abline(linetype = "dashed") +
+  geom_label(data = cons_labels_site, aes(label = pfas_type, fill = pfas_type), 
+             color = "white", 
+             size = 2.3) +
+  scale_fill_custom() +
+  labs(x = "Concentration in Water (ppb)",
+       y = "Concentration in Larval Insects (ppb)")
+
+
+library(cowplot)
+cons_water_larvae = plot_grid(cons_average, cons_site, ncol = 1)
+
+ggsave(cons_water_larvae, file = "plots/cons_water_larvae.jpg", width = 6.5, height = 8)
+
+
+# cons_detect larvae to emerger
+
+cons_labels_larv_emerge = post_mus %>% 
+  group_by(pfas_type) %>% 
+  reframe(Adult = median(Emergent),
+          Larval = median(Larval)) %>% 
+  mutate(Emergent = Adult)
+
+cons_average_larv_emerge = post_mus %>% 
+  ggplot(aes(x = Larval, y = Emergent, color = pfas_type)) + 
+  geom_point(shape = 20, alpha = 0.5, size = 0.2) +
+  # facet_wrap(~pfas_type) +
+  scale_color_custom() +
+  scale_y_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
+  scale_x_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
+  guides(color = "none",
+         fill = "none") +
+  geom_abline(linetype = "dashed") +
+  geom_label(data = cons_labels_larv_emerge, aes(label = pfas_type, fill = pfas_type), 
+             color = "white", size = 2.3) +
+  scale_fill_custom() +
+  labs(x = "Concentration in Larval Insects (ppb)",
+       y = "Concentration in Adult Insects (ppb)")
+
+
+# cons_by site 
+
+post_mus_site = posts_concentrations %>% 
+  ungroup %>% 
+  filter(.draw <= 1000) %>% 
+  group_by(type, pfas_type, .draw, site) %>% 
+  reframe(.epred = median(.epred)) %>% 
+  pivot_wider(names_from = type, values_from = .epred)
+
+cons_labels_site_larv_emerge = post_mus_site %>% 
+  group_by(pfas_type, site) %>% 
+  reframe(Adult = median(Emergent),
+          Larval = median(Larval)) %>% 
+  mutate(Emergent = Adult)
+
+cons_site_larv_emerge = post_mus_site %>% 
+  ggplot(aes(x = Larval, y = Emergent, color = pfas_type)) + 
+  geom_point(shape = 20, alpha = 0.5, size = 0.2) +
+  facet_wrap(~site) +
+  scale_color_custom() +
+  scale_y_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
+  scale_x_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
+  guides(color = "none",
+         fill = "none") +
+  geom_abline(linetype = "dashed") +
+  geom_label(data = cons_labels_site_larv_emerge, aes(label = pfas_type, fill = pfas_type), 
+             color = "white", 
+             size = 2.3) +
+  scale_fill_custom() +
+  labs(x = "Concentration in Larval Insects (ppb)",
+       y = "Concentration in Adult Insects (ppb)")
+
+
+library(cowplot)
+cons_larv_emerge = plot_grid(cons_average_larv_emerge, cons_site_larv_emerge, ncol = 1)
+
+ggsave(cons_larv_emerge, file = "plots/cons_larv_emerge.jpg", width = 6.5, height = 8)
+
+
+
+# cons_detect emerger to spider
+
+cons_labels_spider_emerge = post_mus %>% 
+  group_by(pfas_type) %>% 
+  reframe(Adult = median(Emergent),
+          Tetragnathidae = median(Tetragnathidae))%>% 
+  mutate(Emergent = Adult)
+
+cons_average_spider_emerge = post_mus %>% 
+  ggplot(aes(y = Tetragnathidae, x = Emergent, color = pfas_type)) + 
+  geom_point(shape = 20, alpha = 0.5, size = 0.2) +
+  # facet_wrap(~pfas_type) +
+  scale_color_custom() +
+  scale_y_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
+  scale_x_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
+  guides(color = "none",
+         fill = "none") +
+  geom_abline(linetype = "dashed") +
+  geom_label(data = cons_labels_spider_emerge, aes(label = pfas_type, fill = pfas_type), 
+             color = "white", size = 2.3) +
+  scale_fill_custom() +
+  labs(y = "Concentration in Tetragnathid Spiders (ppb)",
+       x = "Concentration in Adult Insects (ppb)")
+
+
+# cons_by site 
+
+post_mus_site = posts_concentrations %>% 
+  ungroup %>% 
+  filter(.draw <= 1000) %>% 
+  group_by(type, pfas_type, .draw, site) %>% 
+  reframe(.epred = median(.epred)) %>% 
+  pivot_wider(names_from = type, values_from = .epred)
+
+cons_labels_site_spider_emerge = post_mus_site %>% 
+  group_by(pfas_type, site) %>% 
+  reframe(Adult = median(Emergent),
+          Tetragnathidae = median(Tetragnathidae)) %>% 
+  mutate(Emergent = Adult)
+
+cons_site_spider_emerge = post_mus_site %>% 
+  ggplot(aes(y = Tetragnathidae, x = Emergent, color = pfas_type)) + 
+  geom_point(shape = 20, alpha = 0.5, size = 0.2) +
+  facet_wrap(~site) +
+  scale_color_custom() +
+  scale_y_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
+  scale_x_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
+  guides(color = "none",
+         fill = "none") +
+  geom_abline(linetype = "dashed") +
+  geom_label(data = cons_labels_site_spider_emerge, 
+             aes(label = pfas_type, fill = pfas_type), 
+             color = "white", 
+             size = 2.3) +
+  scale_fill_custom() +
+  labs(y = "Concentration in Tetragnathid Spiders (ppb)",
+       x = "Concentration in Adult Insects (ppb)")
+
+
+library(cowplot)
+cons_spider_emerge = plot_grid(cons_average_spider_emerge, cons_site_spider_emerge, ncol = 1)
+
+ggsave(cons_spider_emerge, file = "plots/cons_spider_emerge.jpg", width = 6.5, height = 8)
+
+
+# fig4_combined -----------------------------------------------------------
+
+fig4a_cons = cons_water_biofilm + labs(subtitle = "a)")
+fig4b_cons = cons_biofilm_larvae + labs(subtitle = "b)")
+fig4c_cons = cons_average_larv_emerge + labs(subtitle = "c)")
+fig4d_cons = cons_average_spider_emerge + labs(subtitle = "d)")
+
+fig4_combined_cons = plot_grid(fig4a_cons, fig4b_cons, fig4c_cons, fig4d_cons, ncol = 2)
+
+ggsave(fig4_combined_cons, file = "plots/ms_plots_tables/fig4_combined_cons.jpg", width = 8, height = 8,
        dpi = 400)
 
 # figx_TMF_sum ------------------------------------------------------------
@@ -1592,7 +1864,7 @@ sum_mass_mef_ratios = read_csv(file = "plots/ms_plots_tables/sum_partitioning_ta
               select(-metric) %>% rename(burden_ratio_adult_to_larval = center_interval)) %>% 
   left_join(read_csv(file = "plots/ms_plots_tables/change_in_sum_body_burden.csv")%>% 
               select(-metric) %>% rename(burden_diff_adult_to_larval = center_interval)) %>% 
-  select(taxon, starts_with("larval"), starts_with("emergent"), mef, starts_with("burden_diff"), everything())
+  select(taxon, starts_with("larval"), starts_with("adult"), mef, starts_with("burden_diff"), everything())
 
 write_csv(sum_mass_mef_ratios, file = "plots/ms_plots_tables/sum_mass_mef_ratios.csv")
 
