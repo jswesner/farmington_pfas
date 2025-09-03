@@ -1,0 +1,6 @@
+taxon,larval,larval_mass_per_insect_grams,mef,burden_diff_adult_to_larval,emergent,emergent_mass_per_insect_grams,burden_ratio_adult_to_larval
+Diptera,5.4 (2.8 to 12),0.17 (0.058 to 0.32),4.9 (1.8 to 13),-1.2 (-3.4 to -0.48),26 (14 to 57),0.001 (4e-04 to 0.0023),0.026 (0.0078 to 0.088)
+Ephemeroptera,41 (21 to 94),0.0096 (0.0038 to 0.026),0.43 (0.16 to 1.2),-0.2 (-0.92 to 0.24),18 (8.9 to 42),0.01 (0.002 to 0.029),0.53 (0.15 to 1.8)
+Odonata,39 (21 to 83),0.1 (0.031 to 0.22),0.15 (0.044 to 0.4),-4.6 (-13 to -1.6),5.9 (2.1 to 14),0.084 (0.044 to 0.19),0.095 (0.021 to 0.38)
+Plecoptera,51 (27 to 120),0.014 (0.0021 to 0.085),1.2 (0.47 to 3.2),-0.25 (-1.5 to 0.33),62 (33 to 130),0.017 (0.0024 to 0.093),0.56 (0.13 to 2)
+Trichoptera,22 (14 to 40),0.067 (0.016 to 0.15),2 (0.97 to 4.1),-1.2 (-3.4 to -0.32),43 (26 to 84),0.009 (0.0022 to 0.022),0.29 (0.12 to 0.68)

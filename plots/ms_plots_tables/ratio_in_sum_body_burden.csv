@@ -1,6 +1,6 @@
 taxon,center_interval,metric
-Diptera,3.3 (1.2 to 9.4),Change in Body Burden adult:larval ng/individual
-Ephemeroptera,0.6 (0.2 to 1.4),Change in Body Burden adult:larval ng/individual
-Odonata,0.3 (0.1 to 0.7),Change in Body Burden adult:larval ng/individual
-Plecoptera,0.4 (0.1 to 0.9),Change in Body Burden adult:larval ng/individual
-Trichoptera,2.1 (0.9 to 4.8),Change in Body Burden adult:larval ng/individual
+Diptera,0.026 (0.0078 to 0.088),Change in Body Burden adult:larval ng/individual
+Ephemeroptera,0.53 (0.15 to 1.8),Change in Body Burden adult:larval ng/individual
+Odonata,0.095 (0.021 to 0.38),Change in Body Burden adult:larval ng/individual
+Plecoptera,0.56 (0.13 to 2),Change in Body Burden adult:larval ng/individual
+Trichoptera,0.29 (0.12 to 0.68),Change in Body Burden adult:larval ng/individual
