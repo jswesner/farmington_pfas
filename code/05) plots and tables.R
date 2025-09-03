@@ -109,8 +109,7 @@ posts_taxon_type_summary = posts_taxon_type %>%
 # ppb (fig 1) -----------------------------------
 posts_concentrations = mod_dat %>%
   select(-contains("conc_ppb")) %>%
-  distinct() %>%
-  filter(!type %in% c("Detritus", "Seston", "Sediment")) %>% 
+  distinct() %>% 
   add_epred_draws(seed = 20202, hg4_taxon, re_formula = NULL, dpar = T, ndraws = 500) %>%
   mutate(.epred = .epred*unique(hg4_taxon$data2$max_conc_ppb)) 
 
@@ -207,8 +206,7 @@ posts_sumpfas = mod1$data2 %>%
                            type == "Seston" ~ 4,
                            type == "Larval" ~ 6,
                            type == "Emergent" ~ 7,
-                           type == "Tetragnathidae" ~ 8)) %>%
-  filter(!type %in% c("Detritus", "Seston", "Sediment")) %>% 
+                           type == "Tetragnathidae" ~ 8)) %>% 
   add_epred_draws(seed = 20202, mod1, re_formula = NULL) %>% 
   mutate(sum_ppb = (.epred - 0.0001)*mean_sum_ppb) %>% 
   mutate(sum_ppb = case_when(sum_ppb < 0.000101 ~ 0, TRUE ~ sum_ppb - 0.0001)) %>% 
@@ -227,8 +225,7 @@ posts_taxa_sumpfas = mod1_taxa$data2 %>%
                            type == "Seston" ~ 4,
                            type == "Larval" ~ 6,
                            type == "Emergent" ~ 7,
-                           type == "Tetragnathidae" ~ 8)) %>%
-  filter(!type %in% c("Detritus", "Seston", "Sediment")) %>% 
+                           type == "Tetragnathidae" ~ 8)) %>% 
   add_epred_draws(mod1_taxa) %>% 
   mutate(.epred = (.epred - 0.0001)*unique(mod1_taxa$data2$mean_sum_ppb)) %>% 
   mutate(.epred = case_when(.epred < 0.000101 ~ 0, TRUE ~ .epred - 0.0001)) %>% 
@@ -249,7 +246,8 @@ line_posts = posts_sumpfas %>%
   reframe(sum_ppb = median(sum_ppb)) %>% 
   mutate(group = "lines")
 
-sum_pfas_overall = posts_sumpfas_summary %>% 
+sum_pfas_overall = posts_sumpfas_summary %>%
+  filter(!type %in% c("Detritus", "Seston", "Sediment")) %>% 
   ggplot(aes(x = reorder(type, order),
              y = sum_ppb)) +
   geom_pointrange(aes(ymin = .lower, ymax = .upper)) +
@@ -260,7 +258,8 @@ sum_pfas_overall = posts_sumpfas_summary %>%
         legend.position = "top",
         legend.text = element_text(size = 10),
         legend.title = element_blank()) +
-  geom_point(data = posts_sumpfas_summary_taxa, aes(fill = taxon, shape = taxon),
+  geom_point(data = posts_sumpfas_summary_taxa %>%
+               filter(!type %in% c("Detritus", "Seston", "Sediment")), aes(fill = taxon, shape = taxon),
              position = position_jitter(width = 0.1, height = 0),
              color = "black") +
   # stat_pointinterval(data = posts_taxa_sumpfas, aes(color = taxon,
@@ -287,7 +286,7 @@ ggsave(sum_pfas_overall, file = "plots/ms_plots_tables/sum_pfas_fig1.jpg", width
 sumpfas_type = posts_sumpfas_summary %>% 
   make_summary_table(center = "sum_ppb", digits = 2) %>% 
   select(type, center_interval) %>% 
-  mutate(taxon = case_when(type == "Emergent" ~ "Overall",
+  mutate(taxon = case_when(type == "Adult" ~ "Overall",
                            type == "Larval" ~ "Overall"),
          group_order = 1) %>% 
   mutate(order = case_when(type == "Water" ~ 1,
@@ -323,8 +322,7 @@ write_csv(sum_pfas_fig1_summary_taxa, file = "plots/ms_plots_tables/sum_pfas_fig
 posts_concentrations = mod_dat %>%
   select(-contains("conc_ppb")) %>%
   distinct() %>%
-  # mutate(site = "new") %>%
-  filter(!type %in% c("Detritus", "Seston", "Sediment")) %>% 
+  # mutate(site = "new")  %>% 
   add_epred_draws(seed = 20202, hg4_taxon, re_formula = NULL, dpar = T, ndraws = 500) %>%
   mutate(.epred = .epred*unique(hg4_taxon$data2$max_conc_ppb)) %>% 
   mutate(type = case_when(type == "Emergent" ~ "Adult", T ~ type))
@@ -348,7 +346,8 @@ proportion_posts = posts_concentrations %>%
          type = fct_relevel(type, "Water", "Biofilm", "Larval", "Adult",
                             "Tetragnathidae"))
 
-proportion_plot_fig1 = proportion_posts %>% 
+proportion_plot_fig1 = proportion_posts %>%
+  filter(!type %in% c("Detritus", "Seston", "Sediment")) %>% 
   ggplot(aes(x = type, y = .epred*100, fill = pfas_type)) + 
   geom_bar(stat = "identity", position = "fill") +
   scale_fill_custom() +
@@ -412,7 +411,7 @@ posts_sum_pfas_site = mod1$data %>%
                            type == "Emergent" ~ 7,
                            type == "Tetragnathidae" ~ 8)) %>% 
   add_epred_draws(seed = 20202, mod1, re_formula = NULL) %>% 
-  mutate(sum_ppb = (.epred - 0.0001)*unique(mod1_taxa$data2$mean_sum_ppb)) %>% 
+  mutate(sum_ppb = (.epred - 0.0001)*unique(mod1$data2$mean_sum_ppb)) %>% 
   mutate(sum_ppb = case_when(sum_ppb < 0.000101 ~ 0, TRUE ~ sum_ppb - 0.0001)) %>% 
   group_by(type, site, order) %>% 
   median_qi(sum_ppb) %>% 
@@ -534,7 +533,7 @@ posts_ttf_sum = mod1$data %>%
                            type == "Emergent" ~ 7,
                            type == "Tetragnathidae" ~ 8)) %>% 
   add_epred_draws(seed = 20202, mod1, re_formula = NULL) %>% 
-  mutate(sum_ppb = (.epred - 0.0001)*unique(mod1_taxa$data2$mean_sum_ppb)) %>% 
+  mutate(sum_ppb = (.epred - 0.0001)*unique(mod1$data2$mean_sum_ppb)) %>% 
   mutate(sum_ppb = case_when(sum_ppb < 0.000101 ~ 0, TRUE ~ sum_ppb - 0.0001)) %>%
   group_by(type, .draw) %>% 
   reframe(sum_ppb = mean(sum_ppb)) %>% 
@@ -1775,16 +1774,15 @@ sum(tmf_sum_slopes$slope > 0)/nrow(tmf_sum_slopes)
 as_tibble(bayes_R2(brm_tmf_iso_sum))
 
 # figx_TMF per pfas----------------------------------------------------------------
+pfas_conc_isotopes = readRDS("data/pfas_conc_isotopes_notadjustedformetamorphosis.rds")
+
+mean_conc = attributes(pfas_conc_isotopes$log10_median_conc_s)$`scaled:center`
+sd_conc = attributes(pfas_conc_isotopes$log10_median_conc_s)$`scaled:scale`
 
 brm_tmf_iso_notadjustedformetamorphosis = readRDS("models/brm_tmf_iso_notadjustedformetamorphosis.rds")
 brm_tmf_iso_raw_notadjustedformetamorphosis = brm_tmf_iso_notadjustedformetamorphosis$data %>%
   left_join(readRDS("data/pfas_conc_isotopes_notadjustedformetamorphosis.rds") %>% ungroup %>% distinct(site, pfas_type)) %>% 
   mutate(.epred_log10 = (log10_median_conc_s*sd_conc) + mean_conc)
-
-pfas_conc_isotopes = readRDS("data/pfas_conc_isotopes_notadjustedformetamorphosis.rds")
-
-mean_conc = attributes(pfas_conc_isotopes$log10_median_conc_s)$`scaled:center`
-sd_conc = attributes(pfas_conc_isotopes$log10_median_conc_s)$`scaled:scale`
 
 # plot same but culled to PFOA, PFNA, PFUnA, PFOS
 posts_tmf_iso_overall_filtered = brm_tmf_iso_notadjustedformetamorphosis$data %>% 
@@ -1852,6 +1850,8 @@ tmf_iso_slopes_bycompound %>%
   reframe(prob_greater = sum(slope > 0)/max(.draw))
 
 bayes_R2(brm_tmf_iso_notadjustedformetamorphosis)
+
+
 
 # Other Tables ------------------------------------------------------------------
 
@@ -1989,3 +1989,4 @@ isotope_biplot_siteaveraged = iso_posts_siteaverage %>%
 ggsave(isotope_biplot_siteaveraged,
        file = "plots/ms_plots_tables/isotope_biplot_siteaveraged.jpg",
        dpi = 400, width = 6.5, height = 6)
+
