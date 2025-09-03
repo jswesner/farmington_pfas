@@ -198,8 +198,8 @@ write_csv(pfas_concentrations_bysite_summary, file = "plots/ms_plots_tables/pfas
 mod1 = readRDS(file = "models/mod1.rds")
 mod1_taxa = readRDS(file = "models/mod1_taxa.rds")
 
-posts_sumpfas = mod1$data %>% 
-  distinct(type, site) %>%
+posts_sumpfas = mod1$data2 %>% 
+  distinct(type, site, mean_sum_ppb) %>%
   mutate(order = case_when(type == "Water" ~ 1,
                            type == "Sediment" ~ 2,
                            type == "Biofilm" ~ 5,
@@ -210,7 +210,7 @@ posts_sumpfas = mod1$data %>%
                            type == "Tetragnathidae" ~ 8)) %>%
   filter(!type %in% c("Detritus", "Seston", "Sediment")) %>% 
   add_epred_draws(seed = 20202, mod1, re_formula = NULL) %>% 
-  mutate(sum_ppb = (.epred - 0.0001)*unique(mod1_taxa$data2$mean_sum_ppb)) %>% 
+  mutate(sum_ppb = (.epred - 0.0001)*mean_sum_ppb) %>% 
   mutate(sum_ppb = case_when(sum_ppb < 0.000101 ~ 0, TRUE ~ sum_ppb - 0.0001)) %>% 
   group_by(type, .draw, order) %>% 
   reframe(sum_ppb = mean(sum_ppb)) %>% 
@@ -230,14 +230,18 @@ posts_taxa_sumpfas = mod1_taxa$data2 %>%
                            type == "Tetragnathidae" ~ 8)) %>%
   filter(!type %in% c("Detritus", "Seston", "Sediment")) %>% 
   add_epred_draws(mod1_taxa) %>% 
-  mutate(sum_ppb = (.epred - 0.0001)*unique(mod1_taxa$data2$mean_sum_ppb)) %>% 
-  mutate(.epred = case_when(sum_ppb < 0.000101 ~ 0, TRUE ~ sum_ppb - 0.0001)) %>% 
+  mutate(.epred = (.epred - 0.0001)*unique(mod1_taxa$data2$mean_sum_ppb)) %>% 
+  mutate(.epred = case_when(.epred < 0.000101 ~ 0, TRUE ~ .epred - 0.0001)) %>% 
   group_by(order, type, taxon, .draw) %>% 
   reframe(sum_ppb = mean(.epred)) %>% 
   mutate(type = case_when(type == "Emergent" ~ "Adult", T ~ type))
 
 posts_sumpfas_summary = posts_sumpfas %>% 
   group_by(type, order) %>% 
+  median_qi(sum_ppb) 
+
+posts_sumpfas_summary_taxa = posts_taxa_sumpfas %>% 
+  group_by(type, order, taxon) %>% 
   median_qi(sum_ppb) 
 
 line_posts = posts_sumpfas %>% 
@@ -256,9 +260,12 @@ sum_pfas_overall = posts_sumpfas_summary %>%
         legend.position = "top",
         legend.text = element_text(size = 10),
         legend.title = element_blank()) +
-  stat_pointinterval(data = posts_taxa_sumpfas, aes(fill = taxon),
-                     shape = 21, .width = 0,
-                     position = position_jitter(width = 0.1, height = 0)) +
+  geom_point(data = posts_sumpfas_summary_taxa, aes(fill = taxon, shape = taxon),
+             position = position_jitter(width = 0.1, height = 0),
+             color = "black") +
+  # stat_pointinterval(data = posts_taxa_sumpfas, aes(color = taxon,
+  #                                                   shape = taxon), .width = 0.0,
+  #                    position = position_jitter(width = 0.1, height = 0)) +
   # geom_line(data = line_posts %>% filter(type %in% c("Water", "Sediment", "Larval", "Emergent", "Tetragnathidae")),
   #           aes(group = group),
   #           linetype = "dashed") +
@@ -270,7 +277,8 @@ sum_pfas_overall = posts_sumpfas_summary %>%
   #           linetype = "dotdash") +
   geom_line(data = line_posts %>% filter(type %in% c("Water", "Biofilm", "Larval", "Adult", "Tetragnathidae")),
             aes(group = group)) + 
-  scale_fill_viridis_d(begin = 0.3) +
+  scale_fill_brewer(type = "qual", palette = 7) +
+  scale_shape_manual(values = c(21, 22, 23, 24, 25)) +
   NULL
 
 ggsave(sum_pfas_overall, file = "plots/ms_plots_tables/sum_pfas_fig1.jpg", width = 8, height = 5)

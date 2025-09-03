@@ -56,7 +56,7 @@ merged_d2_sum_taxa = readRDS(file = "data/merged_d2_sum_taxa.rds")
 
 # mod1_taxa = update(mod1, 
 #                    formula = sum_ppb_s_01 ~ type + (1 + type|site) + (1 + type|taxon),
-#                    newdata = d2_sum_taxa,
+#                    newdata = merged_d2_sum_taxa,
 #            data2 = merged_d2_sum_taxa)
 # 
 # saveRDS(mod1_taxa, file = "models/mod1_taxa.rds")
