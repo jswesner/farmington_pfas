@@ -197,8 +197,8 @@ pfas_conc_isotopes_notadjustedformetamorphosis = pfas_posts %>%
 saveRDS(pfas_conc_isotopes_notadjustedformetamorphosis, "data/pfas_conc_isotopes_notadjustedformetamorphosis.rds")
 
 pfas_conc_isotopes_notadjustedformetamorphosis %>%
-  filter(site == "Burr Pond Brook") %>%
-  filter(pfas_type == "PFOS") %>% 
+  # filter(site == "Burr Pond Brook") %>%
+  # filter(pfas_type == "PFOS") %>% 
   ggplot(aes(x = mean_n15, color = pfas_type, y = log10_median_conc)) + 
   geom_point() +
   # geom_text(aes(label = taxon)) +
@@ -215,6 +215,7 @@ pfas_conc_isotopes_notadjustedformetamorphosis %>%
 
 # brm_tmf_iso_notadjustedformetamorphosis = brm(log10_median_conc_s ~ mean_n15 + (1 + mean_n15|site) + (1 + mean_n15|pfas_type),
 #                   data = pfas_conc_isotopes_notadjustedformetamorphosis,
+#                   data2 = pfas_conc_isotopes_notadjustedformmetamorphosis,
 #                   family = gaussian(),
 #                   prior = c(prior(normal(0, 1), class = Intercept),
 #                              prior(normal(0, 1), class = b),
