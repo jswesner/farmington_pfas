@@ -69,3 +69,5 @@ Analysis - Convert per mil TMF to per trophic-level tmf. This is harder than it 
 2025-07-22: The models for hg4_taxon and sum pfas all had the wrong data. They did not have the updated data with lower non-detects that Jess had sent in April. I re-ran them with the data from Jess sent on 7/21/2025 and re-made the plots and tables. Results are very close to the originals.
 
 2025-07-23: In writing the models, I noticed that the prior intercept was originally normal(0,1), which would center the prior on exp(0) = 1. However, the data are scaled so that the maximum value is 1 in the response. So this prior doesn't make sense. I re-fit with -2,1, which places most of the weight on small values ~1/10th of the maximum value. 
+
+2025-09-03: For sum pfas in the three-panel figure, the posterior values were wrong. They are now fixed. The issue was a coding mistake that used the taxon-specific mean_sum_ppb to back transform instead of the taxon-free mean_sum_ppb. It's a fairly minor difference, but now the taxon dots scatter around the mean, which makes more sense visually.
