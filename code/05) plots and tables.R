@@ -108,8 +108,7 @@ posts_taxon_type_summary = posts_taxon_type %>%
 
 # ppb (fig 1) -----------------------------------
 posts_concentrations = mod_dat %>%
-  select(-contains("conc_ppb")) %>%
-  distinct() %>% 
+  distinct(type_taxon, site, pfas_type, order, type) %>% 
   add_epred_draws(seed = 20202, hg4_taxon, re_formula = NULL, dpar = T, ndraws = 500) %>%
   mutate(.epred = .epred*unique(hg4_taxon$data2$max_conc_ppb)) 
 
@@ -425,9 +424,12 @@ proportion_posts_taxon = posts_concentrations_taxon %>%
   mutate(type = as.factor(type))
 
 proportion_plot_fig1_taxon = proportion_posts_taxon %>%
-  ggplot(aes(x = interaction(type, taxon, sep = " "), y = .epred*100, fill = pfas_type)) + 
+  mutate(type_label = case_when(type == "Larval" ~ "a) Larval",
+                                TRUE ~ "b) Adult")) %>% 
+  ggplot(aes(x = taxon, y = .epred*100, fill = pfas_type)) + 
   geom_bar(stat = "identity", position = "fill") +
   scale_fill_custom() +
+  facet_wrap(~type_label, ncol = 1) +
   labs(x = "Sample Type", 
        fill = "PFAS") +
   scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1),
@@ -436,11 +438,12 @@ proportion_plot_fig1_taxon = proportion_posts_taxon %>%
         axis.title = element_blank(),
         legend.text = element_text(size = 7),
         legend.title = element_text(size = 8),
-        text = element_text(size = 10)) +
+        text = element_text(size = 10),
+        strip.text = element_text(hjust = 0)) +
   theme(legend.key.size = unit(0.4, "cm")) +
   NULL
 
-ggsave(proportion_plot_fig1_taxon, file = "plots/ms_plots_tables/proportion_plot_fig1_taxon.jpg", width = 4, height = 3.5)
+ggsave(proportion_plot_fig1_taxon, file = "plots/ms_plots_tables/proportion_plot_fig1_taxon.jpg", width = 3.5, height = 7)
 
 # tables
 proportion_plot_fig1_summary_taxon = proportion_posts_taxon %>% 
@@ -1274,7 +1277,8 @@ prob_labels = post_hus %>%
   group_by(pfas_type) %>% 
   reframe(Water = mean(Water),
           Larval = mean(Larval),
-          Biofilm = mean(Biofilm))
+          Biofilm = mean(Biofilm),
+          Tetragnathidae = mean(Tetragnathidae))
 
 prob_detect_average = post_hus %>% 
   ggplot(aes(x = 1 - Water, y = 1 - Larval, color = pfas_type)) + 
@@ -1307,6 +1311,25 @@ prob_detect_water_biofilm = post_hus %>%
   scale_fill_custom() +
   labs(x = "P(Detect) in Water",
        y = "P(Detect) in Biofilm")
+
+prob_detect_water_spider = post_hus %>% 
+  ggplot(aes(x = 1 - Water, y = 1 - Tetragnathidae, color = pfas_type)) + 
+  geom_point(shape = 20, alpha = 0.5, size = 0.2) +
+  # facet_wrap(~pfas_type) +
+  scale_color_custom() +
+  # scale_y_log10() +
+  # scale_x_log10() +
+  guides(color = "none",
+         fill = "none") +
+  geom_abline(linetype = "dashed") +
+  geom_label(data = prob_labels, aes(label = pfas_type, fill = pfas_type), 
+             color = "white", size = 2.3) +
+  scale_fill_custom() +
+  labs(x = "P(Detect) in Water",
+       y = "P(Detect) in Tetragnathidae")
+
+ggsave(prob_detect_water_spider, file = "plots/ms_plots_tables/prob_detect_water_spider.jpg", width = 5, height = 5)
+
 
 prob_detect_biofilm_larvae = post_hus %>% 
   ggplot(aes(x = 1 - Biofilm, y = 1 - Larval, color = pfas_type)) + 
@@ -1534,7 +1557,8 @@ cons_labels = post_mus %>%
   group_by(pfas_type) %>% 
   reframe(Water = median(Water),
           Larval = median(Larval),
-          Biofilm = median(Biofilm))
+          Biofilm = median(Biofilm),
+          Tetragnathidae = median(Tetragnathidae))
 
 cons_average = post_mus %>% 
   ggplot(aes(x = Water, y = Larval, color = pfas_type)) + 
@@ -1553,6 +1577,28 @@ cons_average = post_mus %>%
   scale_fill_custom() +
   labs(x = "Concentration in Water (ppb)",
        y = "Concentration in Larval Insects (ppb)")
+
+concentration_water_spiders = post_mus %>% 
+  ggplot(aes(x = Water, y = Tetragnathidae, color = pfas_type)) + 
+  geom_point(shape = 20, alpha = 0.5, size = 0.2) +
+  # facet_wrap(~pfas_type) +
+  scale_color_custom() +
+  scale_y_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"),limits = c(0.00001, 20)) +
+  scale_x_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"), limits = c(0.00001, 20)) +
+  guides(color = "none",
+         fill = "none") +
+  geom_abline(linetype = "dashed") +
+  geom_label(data = cons_labels, aes(label = pfas_type, fill = pfas_type), 
+             color = "white", size = 2.3) +
+  scale_fill_custom() +
+  labs(x = "Concentration in Water (ppb)",
+       y = "Concentration in Spiders (ppb)")
+
+
+ggsave(concentration_water_spiders, file = "plots/ms_plots_tables/concentration_water_spiders.jpg", width = 5, height = 5)
+
 
 cons_water_biofilm = post_mus %>% 
   ggplot(aes(x = Water, y = Biofilm, color = pfas_type)) + 
@@ -2145,3 +2191,37 @@ ggsave(isotope_biplot_siteaveraged,
        file = "plots/ms_plots_tables/isotope_biplot_siteaveraged.jpg",
        dpi = 400, width = 6.5, height = 6)
 
+isotope_biplot_summary_siteaveraged = brm_isotopes$data2 %>% 
+  distinct(site, sample_type, mean_15n, mean_13c) %>% 
+  add_epred_draws(brm_isotopes) %>% 
+  ungroup %>% 
+  mutate(site = fct_relevel(site, "Burr Pond Brook", "Hop Brook", "Ratlum Brook", "Pequabuck River")) %>% 
+  select(sample_type, .category, .draw, .epred) %>% 
+  group_by(sample_type, .category, .draw) %>% 
+  reframe(.epred = mean(.epred)) %>% 
+  group_by(sample_type, .category) %>% 
+  median_qi(.epred) %>% 
+  make_summary_table() %>% 
+  select(sample_type, .category, center_interval) %>% 
+  pivot_wider(names_from = .category, values_from = center_interval)
+
+write_csv(isotope_biplot_summary_siteaveraged, file = "plots/ms_plots_tables/isotope_biplot_summary_siteaveraged_centered.csv")  
+
+
+isotope_biplot_summary_siteaveraged_uncentered = brm_isotopes$data2 %>% 
+  distinct(site, sample_type, mean_15n, mean_13c) %>% 
+  add_epred_draws(brm_isotopes) %>% 
+  ungroup %>% 
+  mutate(.epred = case_when(.category == "d13c" ~ .epred + mean_13c,
+                            TRUE ~ .epred + mean_15n)) %>% 
+  select(sample_type, .category, .draw, .epred) %>% 
+  group_by(sample_type, .category, .draw) %>% 
+  reframe(.epred = mean(.epred)) %>% 
+  group_by(sample_type, .category) %>% 
+  median_qi(.epred) %>% 
+  make_summary_table() %>% 
+  select(sample_type, .category, center_interval) %>% 
+  pivot_wider(names_from = .category, values_from = center_interval)
+
+write_csv(isotope_biplot_summary_siteaveraged_uncentered, 
+          file = "plots/ms_plots_tables/isotope_biplot_summary_siteaveraged_uncentered.csv")  
