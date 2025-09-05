@@ -123,7 +123,8 @@ posts_concentrations_summary = posts_concentrations %>%
   median_qi(.epred) %>% 
   left_join(pfas_names) %>% 
   mutate(pfas_type = reorder(pfas_type, pfas_order)) %>% 
-  mutate(type = case_when(type == "Emergent" ~ "Adult", T ~ type))
+  mutate(type = case_when(type == "Emergent" ~ "Adult", T ~ type)) %>%
+  filter(!type %in% c("Detritus", "Seston", "Sediment"))
   
 pfas_concentration = mod_dat %>%
   filter(!type %in% c("Detritus", "Seston", "Sediment")) %>% 
@@ -1269,9 +1270,11 @@ post_hus = posts_concentrations %>%
   filter(.draw <= 1000) %>% 
   group_by(type, pfas_type, site, .draw) %>% 
   reframe(hu = mean(hu)) %>% 
+  left_join(pfas_names) %>%
   group_by(type, pfas_type, .draw) %>% 
   reframe(hu = mean(hu)) %>%
-  pivot_wider(names_from = type, values_from = hu)
+  pivot_wider(names_from = type, values_from = hu) %>% 
+  mutate(Emergent = Adult)
 
 prob_labels = post_hus %>% 
   group_by(pfas_type) %>% 
@@ -1355,7 +1358,8 @@ post_hus_site = posts_concentrations %>%
   # reframe(hu = mean(hu)) %>% 
   # group_by(type, pfas_type, .draw) %>% 
   reframe(hu = mean(hu)) %>% 
-  pivot_wider(names_from = type, values_from = hu)
+  pivot_wider(names_from = type, values_from = hu) %>% 
+  mutate(Emergent = Adult)
 
 prob_labels_site = post_hus_site %>% 
   group_by(pfas_type, site) %>% 
@@ -1418,7 +1422,8 @@ post_hus_site = posts_concentrations %>%
   filter(.draw <= 1000) %>% 
   group_by(type, pfas_type, .draw, site) %>% 
   reframe(hu = mean(hu)) %>% 
-  pivot_wider(names_from = type, values_from = hu)
+  pivot_wider(names_from = type, values_from = hu) %>% 
+  mutate(Emergent = Adult)
 
 prob_labels_site_larv_emerge = post_hus_site %>% 
   group_by(pfas_type, site) %>% 
@@ -1483,7 +1488,8 @@ post_hus_site = posts_concentrations %>%
   filter(.draw <= 1000) %>% 
   group_by(type, pfas_type, .draw, site) %>% 
   reframe(hu = mean(hu)) %>% 
-  pivot_wider(names_from = type, values_from = hu)
+  pivot_wider(names_from = type, values_from = hu) %>% 
+  mutate(Emergent = Adult)
 
 prob_labels_site_spider_emerge = post_hus_site %>% 
   group_by(pfas_type, site) %>% 
@@ -1544,13 +1550,21 @@ ggsave(fig4_combined, file = "plots/ms_plots_tables/fig4_combined.jpg", width = 
 # fig4_concentrations -----------------------------------------------------
 
 # concentration biplots ------------------------------------------------
+posts_concentrations = mod_dat %>%
+  select(-contains("conc_ppb")) %>%
+  distinct(type, taxon, type_taxon, site, pfas_type, order, pfas_order) %>%
+  # mutate(site = "new")  %>% 
+  add_epred_draws(seed = 20202, hg4_taxon, re_formula = NULL, dpar = T, ndraws = 500) %>%
+  mutate(.epred = .epred*unique(hg4_taxon$data2$max_conc_ppb)) %>% 
+  mutate(type = case_when(type == "Emergent" ~ "Adult", T ~ type))
+
 post_mus = posts_concentrations %>% 
-  ungroup %>% 
-  filter(.draw <= 1000) %>% 
-  group_by(type, pfas_type, site, .draw) %>% 
-  reframe(.epred = median(.epred)) %>% 
-  group_by(type, pfas_type, .draw) %>% 
-  reframe(.epred = median(.epred)) %>%
+  group_by(type, site, pfas_type, .draw) %>% # average over taxa
+  reframe(.epred = mean(.epred)) %>%
+  left_join(pfas_names) %>%
+  mutate(pfas_type = reorder(pfas_type, pfas_order)) %>%
+  group_by(pfas_type, type, .draw) %>%  # average over sites
+  reframe(.epred = mean(.epred)) %>%
   pivot_wider(names_from = type, values_from = .epred)
 
 cons_labels = post_mus %>% 
@@ -1623,10 +1637,10 @@ cons_biofilm_larvae = post_mus %>%
   geom_point(shape = 20, alpha = 0.5, size = 0.2) +
   # facet_wrap(~pfas_type) +
   scale_color_custom() +
-  scale_y_log10(breaks = c(0.00001, 0.001, 0.1, 10),
-                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
-  scale_x_log10(breaks = c(0.00001, 0.001, 0.1, 10),
-                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
+  scale_y_log10(breaks = c(0.0001, 0.001,0.01, 0.1, 1, 10, 100),
+                labels = c("0.0001", "0.001", "0.01", "0.1", "1", "10", "100"),  limits = c(0.0001, 100)) +
+  scale_x_log10(breaks = c(0.0001, 0.001,0.01, 0.1, 1, 10, 100),
+                labels = c("0.0001", "0.001", "0.01", "0.1", "1", "10", "100"),  limits = c(0.0001, 100)) +
   guides(color = "none",
          fill = "none") +
   geom_abline(linetype = "dashed") +
@@ -1682,19 +1696,19 @@ ggsave(cons_water_larvae, file = "plots/cons_water_larvae.jpg", width = 6.5, hei
 
 cons_labels_larv_emerge = post_mus %>% 
   group_by(pfas_type) %>% 
-  reframe(Adult = median(Emergent),
+  reframe(Adult = median(Adult),
           Larval = median(Larval)) %>% 
   mutate(Emergent = Adult)
 
 cons_average_larv_emerge = post_mus %>% 
-  ggplot(aes(x = Larval, y = Emergent, color = pfas_type)) + 
+  ggplot(aes(x = Larval, y = Adult, color = pfas_type)) + 
   geom_point(shape = 20, alpha = 0.5, size = 0.2) +
   # facet_wrap(~pfas_type) +
   scale_color_custom() +
-  scale_y_log10(breaks = c(0.00001, 0.001, 0.1, 10),
-                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
-  scale_x_log10(breaks = c(0.00001, 0.001, 0.1, 10),
-                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
+  scale_y_log10(breaks = c(0.0001, 0.001,0.01, 0.1, 1, 10, 100),
+                labels = c("0.0001", "0.001", "0.01", "0.1", "1", "10", "100"),  limits = c(0.0001, 100)) +
+  scale_x_log10(breaks = c(0.0001, 0.001,0.01, 0.1, 1, 10, 100),
+                labels = c("0.0001", "0.001", "0.01", "0.1", "1", "10", "100"),  limits = c(0.0001, 100))+
   guides(color = "none",
          fill = "none") +
   geom_abline(linetype = "dashed") +
@@ -1716,19 +1730,19 @@ post_mus_site = posts_concentrations %>%
 
 cons_labels_site_larv_emerge = post_mus_site %>% 
   group_by(pfas_type, site) %>% 
-  reframe(Adult = median(Emergent),
+  reframe(Adult = median(Adult),
           Larval = median(Larval)) %>% 
   mutate(Emergent = Adult)
 
 cons_site_larv_emerge = post_mus_site %>% 
-  ggplot(aes(x = Larval, y = Emergent, color = pfas_type)) + 
+  ggplot(aes(x = Larval, y = Adult, color = pfas_type)) + 
   geom_point(shape = 20, alpha = 0.5, size = 0.2) +
   facet_wrap(~site) +
   scale_color_custom() +
-  scale_y_log10(breaks = c(0.00001, 0.001, 0.1, 10),
-                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
-  scale_x_log10(breaks = c(0.00001, 0.001, 0.1, 10),
-                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
+  scale_y_log10(breaks = c(0.0001, 0.001,0.01, 0.1, 1, 10, 100),
+                labels = c("0.0001", "0.001", "0.01", "0.1", "1", "10", "100"),  limits = c(0.0001, 100)) +
+  scale_x_log10(breaks = c(0.0001, 0.001,0.01, 0.1, 1, 10, 100),
+                labels = c("0.0001", "0.001", "0.01", "0.1", "1", "10", "100"),  limits = c(0.0001, 100)) +
   guides(color = "none",
          fill = "none") +
   geom_abline(linetype = "dashed") +
@@ -1751,19 +1765,19 @@ ggsave(cons_larv_emerge, file = "plots/cons_larv_emerge.jpg", width = 6.5, heigh
 
 cons_labels_spider_emerge = post_mus %>% 
   group_by(pfas_type) %>% 
-  reframe(Adult = median(Emergent),
+  reframe(Adult = median(Adult),
           Tetragnathidae = median(Tetragnathidae))%>% 
   mutate(Emergent = Adult)
 
 cons_average_spider_emerge = post_mus %>% 
-  ggplot(aes(y = Tetragnathidae, x = Emergent, color = pfas_type)) + 
+  ggplot(aes(y = Tetragnathidae, x = Adult, color = pfas_type)) + 
   geom_point(shape = 20, alpha = 0.5, size = 0.2) +
   # facet_wrap(~pfas_type) +
   scale_color_custom() +
-  scale_y_log10(breaks = c(0.00001, 0.001, 0.1, 10),
-                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
-  scale_x_log10(breaks = c(0.00001, 0.001, 0.1, 10),
-                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
+  scale_y_log10(breaks = c(0.0001, 0.001,0.01, 0.1, 1, 10, 100),
+                labels = c("0.0001", "0.001", "0.01", "0.1", "1", "10", "100"),  limits = c(0.0001, 100)) +
+  scale_x_log10(breaks = c(0.0001, 0.001,0.01, 0.1, 1, 10, 100),
+                labels = c("0.0001", "0.001", "0.01", "0.1", "1", "10", "100"),  limits = c(0.0001, 100)) +
   guides(color = "none",
          fill = "none") +
   geom_abline(linetype = "dashed") +
@@ -1771,7 +1785,7 @@ cons_average_spider_emerge = post_mus %>%
              color = "white", size = 2.3) +
   scale_fill_custom() +
   labs(y = "Concentration in Tetragnathid Spiders (ppb)",
-       x = "Concentration in Adult Insects (ppb)")
+       x = "Concentration in Adult Insects (ppb)") 
 
 
 # cons_by site 
@@ -1785,19 +1799,19 @@ post_mus_site = posts_concentrations %>%
 
 cons_labels_site_spider_emerge = post_mus_site %>% 
   group_by(pfas_type, site) %>% 
-  reframe(Adult = median(Emergent),
+  reframe(Adult = median(Adult),
           Tetragnathidae = median(Tetragnathidae)) %>% 
   mutate(Emergent = Adult)
 
 cons_site_spider_emerge = post_mus_site %>% 
-  ggplot(aes(y = Tetragnathidae, x = Emergent, color = pfas_type)) + 
+  ggplot(aes(y = Tetragnathidae, x = Adult, color = pfas_type)) + 
   geom_point(shape = 20, alpha = 0.5, size = 0.2) +
   facet_wrap(~site) +
   scale_color_custom() +
-  scale_y_log10(breaks = c(0.00001, 0.001, 0.1, 10),
-                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
-  scale_x_log10(breaks = c(0.00001, 0.001, 0.1, 10),
-                labels = c("0.00001", "0.001", "0.1", "10"),  limits = c(0.00001, 20)) +
+  scale_y_log10(breaks = c(0.0001, 0.001,0.01, 0.1, 1, 10, 100),
+                labels = c("0.0001", "0.001", "0.01", "0.1", "1", "10", "100"),  limits = c(0.0001, 100)) +
+  scale_x_log10(breaks = c(0.0001, 0.001,0.01, 0.1, 1, 10, 100),
+                labels = c("0.0001", "0.001", "0.01", "0.1", "1", "10", "100"),  limits = c(0.0001, 100)) +
   guides(color = "none",
          fill = "none") +
   geom_abline(linetype = "dashed") +
@@ -1814,7 +1828,6 @@ library(cowplot)
 cons_spider_emerge = plot_grid(cons_average_spider_emerge, cons_site_spider_emerge, ncol = 1)
 
 ggsave(cons_spider_emerge, file = "plots/cons_spider_emerge.jpg", width = 6.5, height = 8)
-
 
 # fig4_combined -----------------------------------------------------------
 
