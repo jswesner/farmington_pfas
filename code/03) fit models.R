@@ -187,6 +187,7 @@ pfas_conc_isotopes_notadjustedformetamorphosis = pfas_posts %>%
           sd_conc = sd(.epred),
           lower_conc = quantile(.epred, probs = 0.025),
           upper_conc = quantile(.epred, probs = 0.975)) %>% 
+  mutate(taxon = case_when(taxon == "Tetragnathidae" ~ "Spider", TRUE ~ taxon)) %>%
   left_join(iso_post_summaries_notadjustedformetamorphosis, relationship = "many-to-many") %>% 
   mutate(log10_mean_conc = log10(mean_conc),
          log10_sd_conc = sd(log10_mean_conc),
@@ -307,3 +308,17 @@ isotopes_filtered = isotopes %>%
 # 
 # saveRDS(brm_isotopes, file = "models/brm_isotopes.rds")
 brm_isotopes = readRDS(file = "models/brm_isotopes.rds")
+
+# filter for just larvae. Remove Russell Brook b/c it only has 1 emerger value and no spiders measured
+isotopes_notfiltered = isotopes %>% 
+  filter(type ==) %>%
+  filter(site != "Russell Brook") %>% 
+  mutate(d13c = mean_centered_13c,
+         d15n = mean_centered_15n)
+
+# fit_model
+# brm_isotopes_notfiltered = update(brm_isotopes, newdata = isotopes_notfiltered,data2 = isotopes_notfiltered)
+# # 
+# saveRDS(brm_isotopes_notfiltered, file = "models/brm_isotopes_notfiltered.rds")
+brm_isotopes_notfiltered = readRDS(file = "models/brm_isotopes_notfiltered.rds")
+
