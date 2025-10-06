@@ -79,7 +79,7 @@ mod_dat = hg4_taxon$data2 %>%
                            type == "Emergent" ~ 7,
                            type == "Tetragnathidae" ~ 8)) %>% 
   mutate(conc_ppb = conc_ppb_s*max_conc) %>%
-  left_join(pfas_names) %>% 
+  left_join(pfas_names %>% select(pfas_type, pfas_order)) %>% 
   mutate(pfas_type = reorder(pfas_type, pfas_order))
 
 posts_taxon = mod_dat  %>%
@@ -115,7 +115,7 @@ posts_concentrations = mod_dat %>%
 posts_concentrations_summary = posts_concentrations %>% 
   group_by(type, site, pfas_type, order, .draw) %>% # average over taxa
   reframe(.epred = mean(.epred)) %>%
-  left_join(pfas_names) %>%
+  left_join(pfas_names %>% select(pfas_type, pfas_order)) %>%
   mutate(pfas_type = reorder(pfas_type, pfas_order)) %>%
   group_by(pfas_type, order, type, .draw) %>%  # average over sites
   reframe(.epred = mean(.epred)) %>%
@@ -353,20 +353,20 @@ proportion_posts = posts_concentrations %>%
   filter(.draw <= 1000) %>% 
   group_by(type, site, pfas_type, order, .draw) %>% # average over taxa
   reframe(.epred = mean(.epred)) %>%
-  left_join(pfas_names) %>%
-  mutate(pfas_type = reorder(pfas_type, pfas_order))  %>%
-  group_by(pfas_type, order, type, .draw) %>%  # average over sites
+  left_join(pfas_names %>% select(pfas_type, pfas_order))  %>%
+  group_by(pfas_type, pfas_order, type, .draw) %>%  # average over sites
   reframe(.epred = mean(.epred)) %>%
-  group_by(pfas_type, type, .draw) %>%
+  group_by(pfas_type, type, pfas_order, .draw) %>%
   reframe(.epred = mean(.epred)) %>% 
   group_by(.draw, type) %>%
   mutate(total = sum(.epred)) %>% 
   mutate(.epred = .epred/total) %>%
-  group_by(pfas_type, type) %>% 
+  group_by(pfas_type, pfas_order, type) %>% 
   mean_qi(.epred) %>% 
   mutate(type = as.factor(type),
          type = fct_relevel(type, "Water", "Biofilm", "Larval", "Adult",
-                            "Tetragnathidae"))
+                            "Tetragnathidae")) %>% 
+  mutate(pfas_type = reorder(pfas_type, pfas_order)) 
 
 proportion_plot_fig1 = proportion_posts %>%
   filter(!type %in% c("Detritus", "Seston", "Sediment")) %>% 
@@ -454,7 +454,7 @@ proportion_plot_fig1_taxon = proportion_posts_taxon %>%
   ggplot(aes(x = taxon, y = .epred*100, fill = pfas_type)) + 
   geom_bar(stat = "identity", position = "fill") +
   scale_fill_custom() +
-  facet_wrap(~type_label, ncol = 1) +
+  facet_wrap(~type_label, ncol = 2) +
   labs(x = "Sample Type", 
        fill = "PFAS") +
   scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1),
@@ -468,7 +468,7 @@ proportion_plot_fig1_taxon = proportion_posts_taxon %>%
   theme(legend.key.size = unit(0.4, "cm")) +
   NULL
 
-ggsave(proportion_plot_fig1_taxon, file = "plots/ms_plots_tables/proportion_plot_fig1_taxon.jpg", width = 3.5, height = 7)
+ggsave(proportion_plot_fig1_taxon, file = "plots/ms_plots_tables/proportion_plot_fig1_taxon.jpg", width = 6.5, height = 4)
 
 # tables
 proportion_plot_fig1_summary_taxon = proportion_posts_taxon %>% 
@@ -537,6 +537,7 @@ posts_sum_pfas_taxa_site = mod1_taxa$data %>%
   mutate(type = case_when(type == "Emergent" ~ "Adult", T ~ type))
 
 sum_ppb_by_site_fig_s1a = posts_sum_pfas_site %>% 
+  filter(type %in% c("Water", "Biofilm", "Larval", "Adult", "Tetragnathidae")) %>% 
   ggplot(aes(x = reorder(type, order),
              y = sum_ppb)) +
   geom_pointrange(aes(ymin = .lower, ymax = .upper),
@@ -549,15 +550,15 @@ sum_ppb_by_site_fig_s1a = posts_sum_pfas_site %>%
         legend.title = element_blank()) +
   geom_point(data = posts_sum_pfas_taxa_site, aes(color = taxon, shape = taxon),
                      size = 1) +
-  geom_line(data = line_posts_site %>% filter(type %in% c("Water", "Sediment", "Larval", "Adult", "Tetragnathidae")),
-            aes(group = group),
-            linetype = "dashed") +
-  geom_line(data = line_posts_site %>% filter(type %in% c("Water", "Detritus", "Larval", "Adult", "Tetragnathidae")),
-            aes(group = group),
-            linetype = "dotted") +
-  geom_line(data = line_posts_site %>% filter(type %in% c("Water", "Seston", "Larval", "Adult", "Tetragnathidae")),
-            aes(group = group),
-            linetype = "dotdash") +
+  # geom_line(data = line_posts_site %>% filter(type %in% c("Water", "Sediment", "Larval", "Adult", "Tetragnathidae")),
+  #           aes(group = group),
+  #           linetype = "dashed") +
+  # geom_line(data = line_posts_site %>% filter(type %in% c("Water", "Detritus", "Larval", "Adult", "Tetragnathidae")),
+  #           aes(group = group),
+  #           linetype = "dotted") +
+  # geom_line(data = line_posts_site %>% filter(type %in% c("Water", "Seston", "Larval", "Adult", "Tetragnathidae")),
+  #           aes(group = group),
+            # linetype = "dotdash") +
   geom_line(data = line_posts_site %>% filter(type %in% c("Water", "Biofilm", "Larval", "Adult", "Tetragnathidae")),
             aes(group = group)) + 
   scale_color_viridis_d(begin = 0.2, end = 0.8) +
@@ -1244,7 +1245,7 @@ proportion_posts_by_site = posts_concentrations %>%
   mean_qi(.epred) %>% 
   mutate(type = case_when(type == "Emergent" ~ "Adult", TRUE ~ type)) %>% 
   mutate(type = as.factor(type),
-         type = fct_relevel(type, "Water", "Sediment", "Detritus", "Seston", "Biofilm", "Larval", "Adult",
+         type = fct_relevel(type, "Water", "Biofilm", "Larval", "Adult",
                             "Tetragnathidae"),
          site = as.factor(site),
          site = fct_relevel(site, "Hop Brook", "Russell Brook", "Ratlum Brook", "Burr Pond Brook", "Pequabuck River")) %>% 
@@ -1255,8 +1256,6 @@ proportion_plot_figs1b = proportion_posts_by_site %>%
   ggplot(aes(x = type, y = .epred)) + 
   geom_bar(position="fill", stat = "identity", aes(fill = pfas_type)) +
   facet_wrap(~site, nrow = 1) +
-  # scale_fill_brewer(palette = "BrBG") +
-  # scale_fill_viridis_d(direction = -1) +
   scale_fill_custom() +
   labs(x = "Sample Type",
        y = "Percent Contribution",
