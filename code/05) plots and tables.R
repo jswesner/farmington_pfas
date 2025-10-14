@@ -772,6 +772,16 @@ perpfas_taxon_summary = posts_taxon %>%
 
 write_csv(perpfas_taxon_summary, file = "plots/ms_plots_tables/perpfas_taxon_summary.csv")
 
+perpfas_taxon_summary_lifestage = posts_taxon %>% 
+  filter(!is.na(taxon)) %>% 
+  ungroup %>% 
+  group_by(taxon, type, pfas_type, .draw) %>%
+  summarize(.epred = mean(.epred)) %>% 
+  median_qi(.epred)
+
+write_csv(perpfas_taxon_summary_lifestage, file = "plots/ms_plots_tables/perpfas_taxon_summary_lifestage.csv")
+
+
 # compound partitioning (fig 2) -----------------------------------
 
 posts_concentrations = mod_dat %>%
