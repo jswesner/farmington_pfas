@@ -8,7 +8,6 @@ merged_d2 %>% filter(conc_ppb == 0) %>% nrow/nrow(merged_d2)
 
 # proportion of zeros in full data (i.e., all PFAS compounds)
 full_data = read_csv("data/Farmington_PFAS_FWstudy_Datarelease.csv") %>% 
-  clean_names() %>% 
   rename(sample_id = field_id,
          pfas_type = compound) %>% 
   mutate(nondetects = case_when(conc == "ND" ~ "ND", # not detected

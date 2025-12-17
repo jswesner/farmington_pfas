@@ -1,0 +1,14 @@
+Column name,Description,Notes
+u_conn_sample_id,Sample ID internal to UCONN,format: site_sampletype_number
+usgs_sample_id,Sample ID internal to USGS isotope lab,
+site,Name of sampling site,
+year,Year of sample collection in the field,
+sample_type,Type of sample,Includes life stage and taxon for invertebrates
+media,General sample type,"e.g. Invertebrates/Detritus/Sediment, but not particular taxa or life-stages of invertebrates"
+environment,Aquatic or Terrestrial origin of sample,
+family,Taxonomic classification,"This is usually just id'd to order, not family"
+lifestage,Adult or larvale life stage,
+per_n,Percent nitrogen,
+per_c,Percent carbon,
+d15n,per mill 15N,
+d13c,per mill 13C,

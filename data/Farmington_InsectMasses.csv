@@ -1,20 +1,20 @@
-Year,Site,Order,n per composite,Composite Sample Mass (ww),Individual mass (ww),Life stage
-2022,Hop Brook,Diptera,NA,0.20436,,Adult
-2022,Russell Brook,Diptera,NA,0.00608,,Adult
-2023,Pequabuck Brook,Diptera,38,0.01009,0.0003,Adult
-2023,Ratlum Brook,Diptera,81,0.00975,0.0001,Adult
+year,site,order,n_per_composite,composite_sample_mass_ww,individual_mass_ww,life_stage
+2022,Hop Brook,Diptera,NA,0.20436000000000001,NA,Adult
+2022,Russell Brook,Diptera,NA,0.00608,NA,Adult
+2023,Pequabuck Brook,Diptera,38,0.01009,3e-4,Adult
+2023,Ratlum Brook,Diptera,81,0.00975,1e-4,Adult
 2023,Burr Pond Brook,Diptera,5,0.01106,0.0022,Adult
-2023,Burr Pond Brook,Diptera,590,0.55777,0.0009,Adult
+2023,Burr Pond Brook,Diptera,590,0.55777,9e-4,Adult
 2023,Burr Pond Brook,Diptera,571,0.60627,0.0011,Adult
-2023,Burr Pond Brook,Diptera,786,0.51263,0.0007,Adult
-2023,Pequabuck Brook,Diptera,839,0.59509,0.0007,Adult
-2023,Pequabuck Brook,Diptera,1097,0.58465,0.0005,Adult
-2023,Pequabuck Brook,Diptera,710,0.44535,0.0006,Adult
-2023,Ratlum Brook,Diptera,529,0.52378,0.0010,Adult
-2023,Ratlum Brook,Diptera,740,0.54431,0.0007,Adult
-2023,Ratlum Brook,Diptera,745,0.53716,0.0007,Adult
+2023,Burr Pond Brook,Diptera,786,0.51263,7e-4,Adult
+2023,Pequabuck Brook,Diptera,839,0.59509,7e-4,Adult
+2023,Pequabuck Brook,Diptera,1097,0.58465,5e-4,Adult
+2023,Pequabuck Brook,Diptera,710,0.44535,6e-4,Adult
+2023,Ratlum Brook,Diptera,529,0.52378,0.001,Adult
+2023,Ratlum Brook,Diptera,740,0.54431,7e-4,Adult
+2023,Ratlum Brook,Diptera,745,0.53716,7e-4,Adult
 2022,Russell Brook,Diptera,1,0.23205,0.2321,Larval
-2023,Pequabuck Brook,Diptera,1,0.04701,0.0470,Larval
+2023,Pequabuck Brook,Diptera,1,0.04701,0.047,Larval
 2023,Ratlum Brook,Diptera,1,0.20028,0.2003,Larval
 2023,Burr Pond Brook,Diptera,1,0.16558,0.1656,Larval
 2023,Burr Pond Brook,Diptera,1,0.60454,0.6045,Larval
@@ -38,11 +38,11 @@ Year,Site,Order,n per composite,Composite Sample Mass (ww),Individual mass (ww),
 2023,Pequabuck Brook,Ephemeroptera,15,0.02083,0.0014,Larval
 2023,Ratlum Brook,Ephemeroptera,29,0.21979,0.0076,Larval
 2023,Ratlum Brook,Ephemeroptera,48,0.27654,0.0058,Larval
-2022,Hop Brook,Megaloptera,1,0.00372,0.0037,Adult
+2022,Hop Brook,Megaloptera,1,0.0037200000000000002,0.0037,Adult
 2022,Hop Brook,Megaloptera,1,0.0495,0.0495,Larval
-2022,Hop Brook,Odonata,1,0.116,0.1160,Adult
-2022,Hop Brook,Odonata,1,0.105,0.1050,Adult
-2022,Hop Brook,Odonata,1,0.06,0.0600,Adult
+2022,Hop Brook,Odonata,1,0.116,0.116,Adult
+2022,Hop Brook,Odonata,1,0.105,0.105,Adult
+2022,Hop Brook,Odonata,1,0.06,0.06,Adult
 2022,Hop Brook,Odonata,1,0.030803,0.0308,Larval
 2022,Russell Brook,Odonata,1,0.0826,0.0826,Larval
 2022,Russell Brook,Odonata,1,0.25981,0.2598,Larval
@@ -58,9 +58,9 @@ Year,Site,Order,n per composite,Composite Sample Mass (ww),Individual mass (ww),
 2023,Ratlum Brook,Odonata,2,0.15982,0.0799,Larval
 2023,Ratlum Brook,Odonata,1,0.10105,0.1011,Larval
 2022,Hop Brook,Plecoptera,1,0.09037,0.0904,Adult
-2023,Pequabuck Brook,Plecoptera,2,0.03605,0.0180,Adult
+2023,Pequabuck Brook,Plecoptera,2,0.03605,0.018,Adult
 2023,Ratlum Brook,Plecoptera,2,0.01017,0.0051,Adult
-2023,Burr Pond Brook,Plecoptera,11,0.01083,0.0010,Adult
+2023,Burr Pond Brook,Plecoptera,11,0.01083,0.001,Adult
 2023,Ratlum Brook,Plecoptera,49,0.64298,0.0131,Adult
 2023,Ratlum Brook,Plecoptera,68,0.55749,0.0082,Adult
 2023,Ratlum Brook,Plecoptera,12,0.53611,0.0447,Adult
@@ -75,14 +75,14 @@ Year,Site,Order,n per composite,Composite Sample Mass (ww),Individual mass (ww),
 2023,Burr Pond Brook,Plecoptera,4,0.00946,0.0024,Larval
 2023,Ratlum Brook,Plecoptera,9,0.19044,0.0212,Larval
 2023,Ratlum Brook,Plecoptera,25,0.08732,0.0035,Larval
-2023,Burr Pond Brook,Plecoptera,49,0.14844,0.0030,Larval
+2023,Burr Pond Brook,Plecoptera,49,0.14844,0.003,Larval
 2023,Burr Pond Brook,Plecoptera,18,0.12958,0.0072,Larval
 2022,Hop Brook,Trichoptera,14,0.01996,0.0014,Adult
 2022,Russell Brook,Trichoptera,1,0.01192,0.0119,Adult
 2023,Pequabuck Brook,Trichoptera,3,0.010332,0.0034,Adult
 2023,Ratlum Brook,Trichoptera,4,0.02094,0.0052,Adult
 2023,Burr Pond Brook,Trichoptera,2,0.03588,0.0179,Adult
-2023,Ratlum Brook,Trichoptera,49,0.54137,0.0110,Adult
+2023,Ratlum Brook,Trichoptera,49,0.54137,0.011,Adult
 2023,Ratlum Brook,Trichoptera,46,0.51251,0.0111,Adult
 2023,Ratlum Brook,Trichoptera,43,0.56695,0.0132,Adult
 2023,Ratlum Brook,Trichoptera,49,0.62455,0.0127,Adult
@@ -95,14 +95,14 @@ Year,Site,Order,n per composite,Composite Sample Mass (ww),Individual mass (ww),
 2023,Pequabuck Brook,Trichoptera,117,0.52072,0.0045,Adult
 2023,Pequabuck Brook,Trichoptera,124,0.54967,0.0044,Adult
 2023,Pequabuck Brook,Trichoptera,155,0.56638,0.0037,Adult
-2023,Pequabuck Brook,Trichoptera,110,0.54688,0.0050,Adult
+2023,Pequabuck Brook,Trichoptera,110,0.54688,0.005,Adult
 2023,Pequabuck Brook,Trichoptera,110,0.63792,0.0058,Adult
 2022,Hop Brook,Trichoptera,1,0.01864,0.0186,Larval
 2022,Russell Brook,Trichoptera,1,0.02852,0.0285,Larval
 2023,Ratlum Brook,Trichoptera,4,0.53461,0.1337,Larval
 2023,Ratlum Brook,Trichoptera,4,0.54451,0.1361,Larval
 2023,Ratlum Brook,Trichoptera,4,0.56908,0.1423,Larval
-2023,Pequabuck Brook,Trichoptera,1,0.04201,0.0420,Larval
+2023,Pequabuck Brook,Trichoptera,1,0.04201,0.042,Larval
 2023,Ratlum Brook,Trichoptera,1,0.02359,0.0236,Larval
 2023,Burr Pond Brook,Trichoptera,1,0.11168,0.1117,Larval
 2023,Ratlum Brook,Trichoptera,12,0.65232,0.0544,Larval
@@ -122,7 +122,7 @@ Year,Site,Order,n per composite,Composite Sample Mass (ww),Individual mass (ww),
 2023,Burr Pond Brook,Trichoptera,4,0.55402,0.1385,Larval
 2023,Burr Pond Brook,Trichoptera,4,0.51948,0.1299,Larval
 2023,Burr Pond Brook,Trichoptera,4,0.57881,0.1447,Larval
-2023,Burr Pond Brook,Trichoptera,4,0.56383,0.1410,Larval
+2023,Burr Pond Brook,Trichoptera,4,0.56383,0.141,Larval
 2023,Burr Pond Brook,Trichoptera,5,0.52044,0.1041,Larval
 2023,Ratlum Brook,Trichoptera,6,0.58057,0.0968,Larval
 2023,Ratlum Brook,Trichoptera,6,0.58504,0.0975,Larval

@@ -310,8 +310,7 @@ isotopes_filtered = isotopes %>%
 brm_isotopes = readRDS(file = "models/brm_isotopes.rds")
 
 # filter for just larvae. Remove Russell Brook b/c it only has 1 emerger value and no spiders measured
-isotopes_notfiltered = isotopes %>% 
-  filter(type ==) %>%
+isotopes_notfiltered = isotopes %>%
   filter(site != "Russell Brook") %>% 
   mutate(d13c = mean_centered_13c,
          d15n = mean_centered_15n)

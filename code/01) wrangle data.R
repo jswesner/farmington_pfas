@@ -5,18 +5,12 @@ library(janitor)
 
 # pfas --------------------------------------------------------------------
 
-merged_d2 = read_csv("data/Farmington_PFAS_FWstudy_Datarelease.csv") %>% 
-  clean_names() %>% 
-  rename(sample_id = field_id,
-         pfas_type = compound) %>% 
+merged_d2 = read_csv("data/Farmington_PFAS_FWstudy_Datarelease.csv")  %>% 
   mutate(nondetects = case_when(conc == "ND" ~ "ND", # not detected
                                 conc == "NM" ~ "NM", # not measured
                                 conc == 'na' ~ 'na')) %>%  # not available
   mutate(conc_ppb = parse_number(conc)) %>% 
-  mutate(conc_ppb = case_when(nondetects == "ND" ~ 0, TRUE ~ conc_ppb)) %>% 
-  filter(pfas_type == 'X6.2FTS' | pfas_type == 'PFBS' | pfas_type == 'PFDA' | pfas_type == 'PFDoA' | pfas_type == 'PFHpA' | 
-           pfas_type == 'PFHxA' | pfas_type == 'PFHxS' | pfas_type == 'PFNA' | pfas_type == 'PFOA' | pfas_type == 'PFOS' | 
-           pfas_type == 'PFUnA' | pfas_type == 'X8.2FTS') %>%
+  mutate(conc_ppb = case_when(nondetects == "ND" ~ 0, TRUE ~ conc_ppb)) %>%
   droplevels() %>% 
   mutate(pfas_type = case_when(pfas_type == "X6.2FTS" ~ "6:2FTS",
                                pfas_type == "X8.2FTS" ~ "8:2FTS",
@@ -41,7 +35,6 @@ saveRDS(merged_d2, file = "data/merged_d2.rds")
 # sum pfas ----------------------------------------------------------------
 
 merged_d2_sum = read_csv("data/Farmington_PFAS_FWstudy_Datarelease.csv") %>% 
-  clean_names() %>% 
   rename(sample_id = field_id,
          pfas_type = compound) %>% 
   mutate(nondetects = case_when(conc == "ND" ~ "ND", # not detected
@@ -49,9 +42,6 @@ merged_d2_sum = read_csv("data/Farmington_PFAS_FWstudy_Datarelease.csv") %>%
                                 conc == 'na' ~ 'na')) %>%  # not available
   mutate(conc_ppb = parse_number(conc)) %>% 
   mutate(conc_ppb = case_when(nondetects == "ND" ~ 0, TRUE ~ conc_ppb)) %>% 
-  # filter(pfas_type == 'X6.2FTS' | pfas_type == 'PFBS' | pfas_type == 'PFDA' | pfas_type == 'PFDoA' | pfas_type == 'PFHpA' | 
-  #          pfas_type == 'PFHxA' | pfas_type == 'PFHxS' | pfas_type == 'PFNA' | pfas_type == 'PFOA' | pfas_type == 'PFOS' | 
-  #          pfas_type == 'PFUnA' | pfas_type == 'X8.2FTS') %>%
   droplevels() %>% 
   mutate(pfas_type = case_when(pfas_type == "X6.2FTS" ~ "6:2FTS",
                                pfas_type == "X8.2FTS" ~ "8:2FTS",
@@ -88,9 +78,6 @@ merged_d2_sum_taxa = read_csv("data/Farmington_PFAS_FWstudy_Datarelease.csv") %>
                                 conc == 'na' ~ 'na')) %>%  # not available
   mutate(conc_ppb = parse_number(conc)) %>% 
   mutate(conc_ppb = case_when(nondetects == "ND" ~ 0, TRUE ~ conc_ppb)) %>% 
-  # filter(pfas_type == 'X6.2FTS' | pfas_type == 'PFBS' | pfas_type == 'PFDA' | pfas_type == 'PFDoA' | pfas_type == 'PFHpA' | 
-  #          pfas_type == 'PFHxA' | pfas_type == 'PFHxS' | pfas_type == 'PFNA' | pfas_type == 'PFOA' | pfas_type == 'PFOS' | 
-  #          pfas_type == 'PFUnA' | pfas_type == 'X8.2FTS') %>%
   droplevels() %>% 
   mutate(pfas_type = case_when(pfas_type == "X6.2FTS" ~ "6:2FTS",
                                pfas_type == "X8.2FTS" ~ "8:2FTS",
@@ -120,7 +107,7 @@ merged_d2_sum_taxa = read_csv("data/Farmington_PFAS_FWstudy_Datarelease.csv") %>
 saveRDS(merged_d2_sum_taxa, file = "data/merged_d2_sum_taxa.rds")
 
 # insect mass -------------------------------------------------------------
-insect_mass = read_csv("data/Farmington_InsectMasses.csv") %>% clean_names() %>% 
+insect_mass = read_csv("data/Farmington_InsectMasses.csv") %>% 
   mutate(units = "grams") %>% 
   mutate(gdw = individual_mass_ww) 
 
@@ -128,11 +115,7 @@ saveRDS(insect_mass, file = "data/insect_mass.rds")
 
 # isotopes ----------------------------------------------------------------
 
-isotopes = read_csv("data/Farmington_PFAS_Stable Isotopes_Datarelease.csv") %>% 
-  clean_names() %>% 
-  filter(media != "Sediment") %>% 
-  filter(media != "Detritus") %>%
-  filter(!is.na(d15n)) %>% 
+isotopes = read_csv("data/Farmington_PFAS_Stable_Isotopes_Datarelease.csv") %>% 
   mutate(original_d15n = d15n) %>% 
   mutate(lifestage = case_when(family != "Spider" ~ lifestage)) %>% 
   # mutate(d15n = case_when(lifestage == "Adult" ~ d15n - 1, TRUE ~ d15n)) %>% # correct adult enrichment due to metamorphosis (Kraus et al. 2014 EST)

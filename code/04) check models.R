@@ -27,9 +27,9 @@ pp_check_insect_mass = pp_check(mod_mass) + scale_x_log10() + labs(x = "Individu
 pp_check_isotopes_n15 = pp_check(isotopes_n15) + labs(x = expression(paste(delta^{15}, "N")),
                                                                    subtitle = expression(paste("e) ", delta^{15}, "N (centered)")))
 pp_check_tmf_perpfas = pp_check(tmf_perpfas) + labs(x = "PFAS Concentration (log10 tissue ppb)",
-                                                      subtitle = "f) TMF per PFAS")
+                                                      subtitle = "f) TMS per PFAS")
 pp_check_tmf_sum = pp_check(brm_tmf_iso_sum) + labs(x = "\u221112 PFAS Concentration (log10 tissue ppb)",
-                                                    subtitle = "g) TMF \u221112 PFAS")
+                                                    subtitle = "g) TMS \u221112 PFAS")
 pp_check_isotopes_both_N15 = pp_check(brm_isotopes, resp = "d15n") + labs(x = expression(paste(delta^{15}, "N")))
 pp_check_isotopes_both_C13 = pp_check(brm_isotopes, resp = "d13c") + labs(x = expression(paste(delta^{13}, "C")))
 pp_check_isotopes_both = ((pp_check_isotopes_both_C13 + guides(color = "none")+ labs(subtitle = "h) Multivariate Stable Isotopes")) + pp_check_isotopes_both_N15) 
@@ -129,7 +129,7 @@ pp_f = pp_check_tmf_perpfas$data %>%
         legend.title = element_blank())  +
   scale_color_colorblind() +
   labs(x = "PFAS Concentration (log10 tissue ppb)",
-       subtitle = "f) TMF per PFAS")
+       subtitle = "f) TMS per PFAS")
 
 pp_g = pp_check_tmf_sum$data %>% 
   mutate(is_y_label = case_when(grepl("rep", is_y_label) ~ "*y*<sub>rep",
@@ -144,7 +144,7 @@ pp_g = pp_check_tmf_sum$data %>%
         legend.title = element_blank())  +
   scale_color_colorblind() +
   labs(x = "\u221112 PFAS Concentration (log10 tissue ppb)",
-       subtitle = "g) TMF \u221112 PFAS")
+       subtitle = "g) TMS \u221112 PFAS")
 
 pp_h1 = pp_check_isotopes_both_N15$data %>% 
   mutate(is_y_label = case_when(grepl("rep", is_y_label) ~ "*y*<sub>rep",
@@ -225,8 +225,8 @@ mod1_bayes_p = get_bayes_p(model = mod1, response = "sum_ppb_s_01") %>% mutate(m
 mod1_taxa_bayes_p = get_bayes_p(model = mod1_taxa, response = "sum_ppb_s_01") %>% mutate(model = "Sum PFAS ppb per taxon")
 mod_mass_bayes_p = get_bayes_p(model = mod_mass, response = "gdw") %>% mutate(model = "Insect mass")
 isotopes_n15_bayes_p = get_bayes_p(model = isotopes_n15, response = "mean_centered_15n") %>% mutate(model = "deltaN15")
-tmf_perpfas_bayes_p = get_bayes_p(model = tmf_perpfas, response = "log10_median_conc_s") %>% mutate(model = "TMF per PFAS")
-tmf_sumpfas_bayes_p = get_bayes_p(model = brm_tmf_iso_sum, response = "log10_median_sum_s") %>% mutate(model = "TMF sum PFAS")
+tmf_perpfas_bayes_p = get_bayes_p(model = tmf_perpfas, response = "log10_median_conc_s") %>% mutate(model = "TMS per PFAS")
+tmf_sumpfas_bayes_p = get_bayes_p(model = brm_tmf_iso_sum, response = "log10_median_sum_s") %>% mutate(model = "TMS sum PFAS")
 biplot_n15_bayes_p = get_bayes_p(model = brm_isotopes, response = "d15n") %>% mutate(model = "Multivariate Stable Isotopes d15n")
 biplot_c15_bayes_p = get_bayes_p(model = brm_isotopes, response = "d13c") %>% mutate(model = "Multivariate Stable Isotopes d13c")
 
@@ -250,8 +250,8 @@ mod1_bayes_p_type = get_bayes_p(model = mod1, response = "sum_ppb_s_01", group =
 mod1_taxa_bayes_p_type = get_bayes_p(model = mod1_taxa, response = "sum_ppb_s_01", group = "type") %>% mutate(model = "Sum PFAS ppb per taxon") %>% rename(group = type)
 mod_mass_bayes_p_type = get_bayes_p(model = mod_mass, response = "gdw", group = "order") %>% mutate(model = "Insect mass") %>% rename(group = "order")
 isotopes_n15_bayes_p_type = get_bayes_p(model = isotopes_n15, response = "mean_centered_15n", group = "taxon") %>% mutate(model = "deltaN15") %>% rename(group = taxon)
-tmf_perpfas_bayes_p_type = get_bayes_p(model = tmf_perpfas, response = "log10_median_conc_s", group = "pfas_type") %>% mutate(model = "TMF per PFAS") %>% rename(group = pfas_type)
-tmf_sumpfas_bayes_p_type = get_bayes_p(model = brm_tmf_iso_sum, response = "log10_median_sum_s", group = "site") %>% mutate(model = "TMF sum PFAS") %>% rename(group = site)
+tmf_perpfas_bayes_p_type = get_bayes_p(model = tmf_perpfas, response = "log10_median_conc_s", group = "pfas_type") %>% mutate(model = "TMS per PFAS") %>% rename(group = pfas_type)
+tmf_sumpfas_bayes_p_type = get_bayes_p(model = brm_tmf_iso_sum, response = "log10_median_sum_s", group = "site") %>% mutate(model = "TMS sum PFAS") %>% rename(group = site)
 biplot_n15_bayes_p_type = get_bayes_p(model = brm_isotopes, response = "d15n", group = "sample_type") %>% mutate(model = "Multivariate Stable Isotopes d15n") %>% rename(group = sample_type)
 biplot_c15_bayes_p_type = get_bayes_p(model = brm_isotopes, response = "d13c", group = "sample_type") %>% mutate(model = "Multivariate Stable Isotopes d13c") %>% rename(group = sample_type)
 
@@ -307,17 +307,7 @@ merged_d2 = hg4_taxon$data2$merged_d2
 
 max_conc = unique(merged_d2$max_conc)
 
-pfas_names = read_csv("data/log_kw.csv") %>% 
-  mutate(pfas_type = str_remove(pfas_type, " ")) %>% 
-  mutate(log_kmw_mean = parse_number(str_sub(log_kmw, 1, 4)),
-         log_kmw_sd = parse_number(str_sub(log_kmw, -4, -1)),
-         log_kpw_mean = parse_number(log_kpw),
-         number_carbons = parse_number(no_carbons)) %>% 
-  rename(pfas_category = type) %>% 
-  distinct(pfas_category, pfas_type, number_carbons) %>% 
-  filter(pfas_type %in% unique(merged_d2$pfas_type)) %>% 
-  arrange(pfas_category, number_carbons) %>% 
-  mutate(pfas_order = 1:nrow(.))
+pfas_names = read_csv("data/pfas_names.csv")
 
 mod_dat = hg4_taxon$data %>% 
   separate(type_taxon, into = c("type", "taxon"), remove = F) %>% 

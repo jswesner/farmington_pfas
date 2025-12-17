@@ -1,15 +1,15 @@
 Column name,Description,Notes
-COC,Chain of custody number associated with analytical instrument run,
-CESE.ID,Sample identification assigned by analytical lab,
-Field.ID,Sample identification assigned in field by research staff,
-Site,Name of sampling site,
-Sample.Type,Type of sample,
-Collected,Date of sample collection in the field,
-Received,Date sample received by the analytical lab,
-Prep.Date,Date sample prepared for analysis,
-Analysis.Date,Date sample analyzed,
-Units,Concentration units,nanogram per gram wet weight or nanogram per milliliter
-Compound,Name of PFAS compound,
-Conc,Concentration measured,"ND = not detected, NM = not measured, na = not available due to sample damage"
-RL,Analytical reporting limit,
-BRL,Below reporting limit,"Whether the concentration is below the reporting limit. Yes indicates the concentration is above the method detection limit, but below the reporting limit"
+coc,Chain of custody number associated with analytical instrument run,
+cese_id,Sample identification assigned by analytical lab,
+field_id,Sample identification assigned in field by research staff,
+site,Name of sampling site,
+sample_type,Type of sample,
+collected,Date of sample collection in the field,
+received,Date sample received by the analytical lab,
+prep_date,Date sample prepared for analysis,
+analysis_date,Date sample analyzed,
+units,Concentration units,nanogram per gram wet weight or nanogram per milliliter
+compound,Name of PFAS compound,
+conc,Concentration measured,"ND = not detected, NM = not measured, na = not available due to sample damage"
+rl,Analytical reporting limit,
+brl,Below reporting limit,"Whether the concentration is below the reporting limit. Yes indicates the concentration is above the method detection limit, but below the reporting limit"

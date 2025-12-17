@@ -56,17 +56,7 @@ merged_d2 = hg4_taxon$data2
 
 max_conc = unique(merged_d2$max_conc)
 
-pfas_names = read_csv("data/log_kw.csv") %>% 
-  mutate(pfas_type = str_remove(pfas_type, " ")) %>% 
-  mutate(log_kmw_mean = parse_number(str_sub(log_kmw, 1, 4)),
-         log_kmw_sd = parse_number(str_sub(log_kmw, -4, -1)),
-         log_kpw_mean = parse_number(log_kpw),
-         number_carbons = parse_number(no_carbons)) %>% 
-  rename(pfas_category = type) %>% 
-  distinct(pfas_category, pfas_type, number_carbons) %>% 
-  filter(pfas_type %in% unique(merged_d2$pfas_type)) %>% 
-  left_join(pfas_orders) %>% 
-  mutate(pfas_order = order)
+pfas_names = read_csv("data/pfas_names.csv")
 
 mod_dat = hg4_taxon$data2 %>% 
   separate(type_taxon, into = c("type", "taxon"), remove = F) %>% 
@@ -102,7 +92,7 @@ posts_taxa_only = posts_taxon %>%
 
 # for lines
 posts_taxon_type_summary = posts_taxon_type %>% 
-  group_by(type, pfas_type, pfas_category, order, number_carbons) %>% 
+  group_by(type, pfas_type, pfas_category, order) %>% 
   median_qi(.epred) 
 
 
@@ -139,26 +129,12 @@ pfas_concentration = mod_dat %>%
                   size = 0.3) + 
   scale_y_log10(breaks = c(1, 10, 100), 
                 labels = c("0", "10", "100")) +
-  # facet_wrap(pfas_category~reorder(pfas_type, number_carbons)) +
   facet_wrap2(~reorder(pfas_type, pfas_order)) +
   scale_color_custom() +
   labs(y = "PFAS Concentration (ppb)",
        x = "") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.3)) +
   guides(color = "none") +
-  # geom_line(data = posts_concentrations_summary %>% 
-  #             mutate(group = "lines") %>% 
-  #             filter(type %in% c("Water", "Sediment", "Larval", "Emergent", "Tetragnathidae")),
-  #           aes(group = group, y = .epred + 1),
-  #           linetype = "dashed") +
-  # geom_line(data = posts_concentrations_summary %>% 
-  #             mutate(group = "lines") %>% filter(type %in% c("Water", "Detritus", "Larval", "Emergent", "Tetragnathidae")),
-  #           aes(group = group, y = .epred + 1),
-  #           linetype = "dotted") +
-  # geom_line(data = posts_concentrations_summary %>% 
-  #             mutate(group = "lines") %>% filter(type %in% c("Water", "Seston", "Larval", "Emergent", "Tetragnathidae")),
-  #           aes(group = group, y = .epred + 1),
-  #           linetype = "dotdash") +
   geom_line(data = posts_concentrations_summary %>% 
               mutate(group = "lines") %>% filter(type %in% c("Water", "Biofilm", "Larval", "Adult", "Tetragnathidae")),
             aes(group = group, y = .epred + 1)) +
@@ -240,6 +216,23 @@ posts_sumpfas_summary = posts_sumpfas %>%
 posts_sumpfas_summary_taxa = posts_taxa_sumpfas %>% 
   group_by(type, order, taxon) %>% 
   median_qi(sum_ppb) 
+
+# prob differences
+
+posts_sumpfas_diff_taxa <- posts_taxa_sumpfas %>%
+  group_by(taxon, type) %>% 
+  mutate(taxon_id = cur_group_id()) %>% 
+  inner_join(posts_taxa_sumpfas, 
+             by = c("type", ".draw"),
+             suffix = c("_a", "_b"),
+             relationship = "many-to-many") %>%
+  filter(taxon_a != taxon_b) %>%
+  group_by(type, taxon_a, taxon_b) %>%
+  reframe(
+    prob_a_gt_b = mean(sum_ppb_a > sum_ppb_b)
+  ) %>% 
+  arrange(prob_a_gt_b) %>% 
+  filter(prob_a_gt_b > 0.4999) # ensures a unidirectional comparison
 
 line_posts = posts_sumpfas %>% 
   group_by(type, order) %>% 

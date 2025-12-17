@@ -62,7 +62,7 @@ for(i in 1:length(readme_data)){
   select(dataset, `Column name`, data_type, everything())
 }
 
-# ...then add the site location dictionary
+# then add the site location dictionary
 site_locations = read_csv("data/SiteLocations.csv") %>%
   mutate(across(everything(), as.character)) %>%  
   pivot_longer(cols = everything()) %>% 
