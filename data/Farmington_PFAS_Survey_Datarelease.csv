@@ -1,4 +1,4 @@
-COC,CESE.ID,Field.ID,Site,Sample.Type,Collected,Received,Prep.Date,Analysis.Date,Units,Compound,Conc,RL
+coc,cese_id,field_id,site,sample_type,collected,received,prep_date,analysis_date,units,compound,conc,rl
 220063,220063-001,FB1,Field blank,Field blank,4/5/22,4/14/22,4/18/22,4/22/22,ng/mL,PFBS,ND,0.0021
 220063,220063-001,FB1,Field blank,Field blank,4/5/22,4/14/22,4/18/22,4/22/22,ng/mL,PFHxA,ND,0.0026
 220063,220063-001,FB1,Field blank,Field blank,4/5/22,4/14/22,4/18/22,4/22/22,ng/mL,PFHpA,ND,0.0018

@@ -16,6 +16,9 @@ merged_d2 = read_csv("data/Farmington_PFAS_FWstudy_Datarelease.csv")  %>%
                                pfas_type == "X8.2FTS" ~ "8:2FTS",
                                TRUE ~ pfas_type)) %>% 
   filter(!grepl("lank", sample_id)) %>% 
+  # filter(pfas_type %in% c("PFBS"  , "PFHxA" , "PFHpA" , "PFHxS"  ,
+  #                         "PFOA",  "6:2FTS" ,"PFNA"  , "PFOS",   "8:2FTS", 
+  #                         "PFDA" ,  "PFUnA",  "PFDoA")) %>% 
   mutate(type_taxon = sample_type) %>% 
   separate(sample_type, into = c('type', 'taxon')) %>% 
   mutate(max_conc_ppb = max(conc_ppb, na.rm = T),
@@ -71,8 +74,8 @@ saveRDS(merged_d2_sum, file = "data/merged_d2_sum.rds")
 
 merged_d2_sum_taxa = read_csv("data/Farmington_PFAS_FWstudy_Datarelease.csv") %>% 
   clean_names() %>% 
-  rename(sample_id = field_id,
-         pfas_type = compound) %>% 
+  # rename(sample_id = field_id,
+  #        pfas_type = compound) %>% 
   mutate(nondetects = case_when(conc == "ND" ~ "ND", # not detected
                                 conc == "NM" ~ "NM", # not measured
                                 conc == 'na' ~ 'na')) %>%  # not available
@@ -136,3 +139,81 @@ isotopes = read_csv("data/Farmington_PFAS_Stable_Isotopes_Datarelease.csv") %>%
          type_taxon = case_when(type_taxon == "Emergent_Spider" ~ "Tetragnathidae", TRUE ~ type_taxon))
 
 saveRDS(isotopes, file = "data/isotopes.rds")
+
+
+
+# review suggestions ------------------------------------------------------
+
+# re-run with just diptera and trichoptera
+merged_d2_sum_diptric = read_csv("data/Farmington_PFAS_FWstudy_Datarelease.csv") %>% 
+  # rename(sample_id = field_id,
+  #        pfas_type = compound) %>% 
+  mutate(nondetects = case_when(conc == "ND" ~ "ND", # not detected
+                                conc == "NM" ~ "NM", # not measured
+                                conc == 'na' ~ 'na')) %>%  # not available
+  mutate(conc_ppb = parse_number(conc)) %>% 
+  mutate(conc_ppb = case_when(nondetects == "ND" ~ 0, TRUE ~ conc_ppb)) %>% 
+  droplevels() %>% 
+  mutate(pfas_type = case_when(pfas_type == "X6.2FTS" ~ "6:2FTS",
+                               pfas_type == "X8.2FTS" ~ "8:2FTS",
+                               TRUE ~ pfas_type)) %>% 
+  filter(!grepl("lank", sample_id)) %>% 
+  mutate(type_taxon = sample_type) %>% 
+  separate(sample_type, into = c('type', 'taxon')) %>% 
+  mutate(max_conc_ppb = max(conc_ppb, na.rm = T)) %>% 
+  mutate(conc_ppb_s = conc_ppb/max(conc_ppb),
+         max_conc = max_conc_ppb) %>% 
+  mutate(order = case_when(type == "Water" ~ 1,
+                           type == "Sediment" ~ 2,
+                           type == "Biofilm" ~ 5,
+                           type == "Detritus" ~ 3,
+                           type == "Seston" ~ 4,
+                           type == "Larval" ~ 6,
+                           type == "Emergent" ~ 7,
+                           type == "Tetragnathidae" ~ 8)) %>% 
+  filter(is.na(taxon) |  taxon %in% c("Diptera", "Trichoptera")) %>% 
+  group_by(sample_id, site, type) %>% 
+  reframe(sum_ppb = sum(conc_ppb)) %>% 
+  mutate(mean_sum_ppb = mean(sum_ppb, na.rm = T),
+         sum_ppb_s = sum_ppb/mean_sum_ppb,
+         sum_ppb_s_01 = sum_ppb_s + 0.0001)
+
+saveRDS(merged_d2_sum_diptric, file = "data/merged_d2_sum_diptric.rds")
+
+
+merged_d2_sum_taxa_diptric = read_csv("data/Farmington_PFAS_FWstudy_Datarelease.csv") %>% 
+  clean_names() %>% 
+  # rename(sample_id = field_id,
+  #        pfas_type = compound) %>% 
+  mutate(nondetects = case_when(conc == "ND" ~ "ND", # not detected
+                                conc == "NM" ~ "NM", # not measured
+                                conc == 'na' ~ 'na')) %>%  # not available
+  mutate(conc_ppb = parse_number(conc)) %>% 
+  mutate(conc_ppb = case_when(nondetects == "ND" ~ 0, TRUE ~ conc_ppb)) %>% 
+  droplevels() %>% 
+  mutate(pfas_type = case_when(pfas_type == "X6.2FTS" ~ "6:2FTS",
+                               pfas_type == "X8.2FTS" ~ "8:2FTS",
+                               TRUE ~ pfas_type)) %>% 
+  filter(!grepl("lank", sample_id)) %>% 
+  mutate(type_taxon = sample_type) %>% 
+  separate(sample_type, into = c('type', 'taxon')) %>% 
+  mutate(max_conc_ppb = max(conc_ppb, na.rm = T),
+         max_conc = max_conc_ppb) %>% 
+  mutate(conc_ppb_s = conc_ppb/max(conc_ppb)) %>% 
+  mutate(order = case_when(type == "Water" ~ 1,
+                           type == "Sediment" ~ 2,
+                           type == "Biofilm" ~ 5,
+                           type == "Detritus" ~ 3,
+                           type == "Seston" ~ 4,
+                           type == "Larval" ~ 6,
+                           type == "Emergent" ~ 7,
+                           type == "Tetragnathidae" ~ 8)) %>% 
+  filter(taxon %in% c("Diptera", "Trichoptera")) %>% 
+  group_by(sample_id, site, type, taxon) %>% 
+  reframe(sum_ppb = sum(conc_ppb)) %>% 
+  mutate(mean_sum_ppb = mean(sum_ppb, na.rm = T),
+         sum_ppb_s = sum_ppb/mean_sum_ppb,
+         sum_ppb_s_01 = sum_ppb_s + 0.0001)
+
+
+saveRDS(merged_d2_sum_taxa_diptric, file = "data/merged_d2_sum_taxa_diptric.rds")

@@ -15,22 +15,21 @@ theme_set(theme_default())
 
 scale_fill_custom <- function() {
   scale_fill_manual(values = c(
-    "PFHxA" = "#C7E9C0", "PFHpA" = "#A1D99B", "PFOA" = "#41AB5D", "PFNA" = "#006600",
-    "PFDA" = "darkslategray3", "PFUnA" = "darkslategray4", "PFDoA" = "darkslategray",
-    "PFBS" = "#C6DBEF", "PFHxS" = "#9ECAE1", "PFOS" = "#3399ff",
-    "6:2FTS" = "grey", "8:2FTS" = "black"
+    "PFHxA"="#c6dbee", "PFHpA" = "#a0cae0", "PFOA" = "#6aaed5", 
+    "PFNA" = "#3e91c5","PFDA"="#1e71b5", "PFUnA" = "#166cb7", 
+    "PFDoA"= "#0e2c6a", "PFBS" ="#fff7bc", "PFHxS" = "#fec34d",
+    "PFOS" = "#FF9A28", "6:2FTS" = "#A1D99B", "8:2FTS" = "#41AB5D"
   ))
 }
 
 scale_color_custom <- function() {
   scale_color_manual(values = c(
-    "PFHxA" = "#C7E9C0", "PFHpA" = "#A1D99B", "PFOA" = "#41AB5D", "PFNA" = "#006600",
-    "PFDA" = "darkslategray3", "PFUnA" = "darkslategray4", "PFDoA" = "darkslategray",
-    "PFBS" = "#C6DBEF", "PFHxS" = "#9ECAE1", "PFOS" = "#3399ff",
-    "6:2FTS" = "grey", "8:2FTS" = "black"
+    "PFHxA"="#c6dbee", "PFHpA" = "#a0cae0", "PFOA" = "#6aaed5", 
+    "PFNA" = "#3e91c5","PFDA"="#1e71b5", "PFUnA" = "#166cb7", 
+    "PFDoA"= "#0e2c6a", "PFBS" ="#fff7bc", "PFHxS" = "#fec34d",
+    "PFOS" = "#FF9A28", "6:2FTS" = "#A1D99B", "8:2FTS" = "#41AB5D"
   ))
 }
-
 
 make_summary_table <- function(df, center = ".epred", lower = ".lower", upper = ".upper",
                                center_interval = "median_cri", digits = 2) {
@@ -42,13 +41,6 @@ make_summary_table <- function(df, center = ".epred", lower = ".lower", upper = 
       center_interval = paste0(.center_val, " (", .lower_val, " to ", .upper_val, ")")) %>% 
     select(-.center_val, -.lower_val, -.upper_val)
 }
-
-pfas_orders = tibble(pfas_type = c(
-  "PFHxA", "PFHpA" , "PFOA" , "PFNA" ,
-  "PFDA", "PFUnA", "PFDoA" ,
-  "PFBS" , "PFHxS" , "PFOS" ,
-  "6:2FTS" , "8:2FTS")) %>% 
-  mutate(order = 1:nrow(.))
 
 # load model
 hg4_taxon = readRDS(file = "models/hg4_taxon.rds")
@@ -373,8 +365,7 @@ proportion_plot_fig1 = proportion_posts %>%
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4),
         axis.title = element_blank(),
         legend.text = element_text(size = 7),
-        legend.title = element_text(size = 8),
-        text = element_text(size = 10)) +
+        legend.title = element_text(size = 8)) +
   theme(legend.key.size = unit(0.4, "cm")) +
   NULL
 
@@ -392,9 +383,9 @@ proportion_plot_fig1_summary = proportion_posts %>%
   select(pfas_type, Water, Sediment, Detritus, Seston, Biofilm, Larval, Adult, Tetragnathidae) %>% 
   mutate(units = "proportion of \u221112 pfas (posterior mean and 95% CrI)",
          notes = "Summarized as mean cri to ensure that columns sum to 1. Using medians, they don't sum to 1") %>% 
-  left_join(pfas_orders) %>% 
-  arrange(order) %>% 
-  select(-order)
+  left_join(pfas_names) %>% 
+  arrange(pfas_order) %>% 
+  select(-pfas_order)
 
 write_csv(proportion_plot_fig1_summary , file = "plots/ms_plots_tables/proportion_plot_fig1_summary.csv")
 
@@ -409,6 +400,7 @@ fig1_left = fig1a/fig1c
 fig1_combined = plot_grid(fig1_left, fig1b, ncol =2 )
 
 ggsave(fig1_combined, file = "plots/ms_plots_tables/fig1_combined.jpg", width = 11, height = 9)
+ggsave(fig1b, file = "plots/ms_plots_tables/fig1b.jpg", width = 6.5, height = 9)
 
 
 # proportion ppb per taxon ------------------------------------------------
@@ -473,9 +465,9 @@ proportion_plot_fig1_summary_taxon = proportion_posts_taxon %>%
   select(pfas_type, type, taxon, mean_cri) %>% 
   pivot_wider(names_from = taxon, values_from = mean_cri) %>% 
   mutate(units = "proportion of \u221112 pfas (posterior mean and 95% CrI)") %>% 
-  left_join(pfas_orders) %>% 
-  arrange(order) %>% 
-  select(-order)
+  left_join(pfas_names) %>% 
+  arrange(pfas_order) %>% 
+  select(-pfas_order)
 
 write_csv(proportion_plot_fig1_summary_taxon, file = "plots/ms_plots_tables/proportion_plot_fig1_summary_taxon.csv")
 
@@ -918,9 +910,9 @@ partitioning_table = compound_partitioning_fig2_summary_log10 %>% left_join(sum_
   filter(grepl("water", path)) %>% 
   pivot_wider(names_from = path, values_from = value) %>%
   rename(pfas_type = name) %>% 
-  left_join(pfas_orders %>% add_row(pfas_type = "sum_pfas", order = 0)) %>% 
-  arrange(order) %>% 
-  select(pfas_type, `water --> sediment`, `water --> detritus`, `water --> seston`, everything(), -order)
+  left_join(pfas_names %>% add_row(pfas_type = "sum_pfas", pfas_order = 0)) %>% 
+  arrange(pfas_order) %>% 
+  select(pfas_type, `water --> sediment`, `water --> detritus`, `water --> seston`, everything(), -pfas_order)
 
 write_csv(partitioning_table, file = "plots/ms_plots_tables/partitioning_table.csv")
 
@@ -1090,9 +1082,9 @@ change_in_body_burden_fig3_summary = diff_summary %>%
   make_summary_table(center = "diff", digits = 2) %>% 
   select(taxon, pfas_type, center_interval) %>% 
   pivot_wider(names_from = taxon, values_from = center_interval) %>% 
-  left_join(pfas_orders) %>% 
-  arrange(order) %>% 
-  select(-order)
+  left_join(pfas_names) %>% 
+  arrange(pfas_order) %>% 
+  select(-pfas_order)
 
 write_csv(change_in_body_burden_fig3_summary, file = "plots/ms_plots_tables/change_in_body_burden_fig3_summary.csv")
 
@@ -1110,14 +1102,14 @@ ratio_burden_plot = diffs  %>%
   ggplot(aes(x = ratio, y = taxon)) + 
   # ggridges::geom_density_ridges_gradient(aes(fill = after_stat(x)), scale = 0.7,
   #                               color = NA) +
-  ggridges::geom_density_ridges(aes(fill = taxon)) +
+  ggridges::geom_density_ridges(fill = "grey", scale = 1) +
   facet_wrap2(~fct_relevel(pfas_type, "PFOA", "PFNA", "PFUnA", "PFOS"), nrow = 1) +
   geom_vline(xintercept = 1) +
   scale_x_log10(limits = c(1e-04, 1e04),
                 breaks = c(0.001, 0.01, 0.1, 1, 10, 100, 1000),
                 labels = c("0.001", "0.01", "0.1", "1", "10", "100", "1000")) +
   guides(fill = "none") +
-  scale_fill_brewer(type = "qual", palette = 7) +
+  # scale_fill_grey(start = 0.6, end = 0.4) +
   labs(x = "Ratio of adult:larval PFAS body burden",
        y = "PFAS Compound",
        color = "") +
@@ -1139,9 +1131,9 @@ ratio_burden_plot_fig3_summary = diffs %>%
   make_summary_table(center = "ratio", digits = 2) %>% 
   select(taxon, pfas_type, center_interval) %>% 
   pivot_wider(names_from = taxon, values_from = center_interval) %>% 
-  left_join(pfas_orders) %>% 
-  arrange(order) %>% 
-  select(-order)
+  left_join(pfas_names) %>% 
+  arrange(pfas_order) %>% 
+  select(-pfas_order)
 
 write_csv(ratio_burden_plot_fig3_summary, file = "plots/ms_plots_tables/ratio_burden_plot_fig3_summary.csv")
 
@@ -1221,7 +1213,7 @@ write_csv(ratio_in_sum_body_burden, file = "plots/ms_plots_tables/ratio_in_sum_b
 # fig3_combined -----------------------------------------------------------
 fig3a = mef_by_taxon_fig3
 
-fig3b = ratio_burden_plot
+fig3b = ratio_burden_plot 
 
 fig3_combined = plot_grid(fig3a, fig3b, nrow = 2, align = "v")
 
@@ -1252,8 +1244,8 @@ proportion_posts_by_site = posts_concentrations %>%
                             "Tetragnathidae"),
          site = as.factor(site),
          site = fct_relevel(site, "Hop Brook", "Russell Brook", "Ratlum Brook", "Burr Pond Brook", "Pequabuck River")) %>% 
-  left_join(pfas_orders) %>% 
-  mutate(pfas_type = fct_reorder(pfas_type, order)) 
+  left_join(pfas_names) %>% 
+  mutate(pfas_type = fct_reorder(pfas_type, pfas_order)) 
 
 proportion_plot_figs1b = proportion_posts_by_site %>% 
   ggplot(aes(x = type, y = .epred)) + 
@@ -1604,7 +1596,8 @@ cons_labels = post_mus %>%
   reframe(Water = median(Water),
           Larval = median(Larval),
           Biofilm = median(Biofilm),
-          Tetragnathidae = median(Tetragnathidae))
+          Seston = median(Seston),
+          Detritus = median(Detritus))
 
 cons_average = post_mus %>% 
   ggplot(aes(x = Water, y = Larval, color = pfas_type)) + 
@@ -1624,26 +1617,28 @@ cons_average = post_mus %>%
   labs(x = "Concentration in Water (ppb)",
        y = "Concentration in Larval Insects (ppb)")
 
-concentration_water_spiders = post_mus %>% 
-  ggplot(aes(x = Water, y = Tetragnathidae, color = pfas_type)) + 
-  geom_point(shape = 20, alpha = 0.5, size = 0.2) +
-  # facet_wrap(~pfas_type) +
-  scale_color_custom() +
-  scale_y_log10(breaks = c(0.00001, 0.001, 0.1, 10),
-                labels = c("0.00001", "0.001", "0.1", "10"),limits = c(0.00001, 20)) +
-  scale_x_log10(breaks = c(0.00001, 0.001, 0.1, 10),
-                labels = c("0.00001", "0.001", "0.1", "10"), limits = c(0.00001, 20)) +
-  guides(color = "none",
-         fill = "none") +
-  geom_abline(linetype = "dashed") +
-  geom_label(data = cons_labels, aes(label = pfas_type, fill = pfas_type), 
-             color = "white", size = 2.3) +
-  scale_fill_custom() +
-  labs(x = "Concentration in Water (ppb)",
-       y = "Concentration in Spiders (ppb)")
-
-
-ggsave(concentration_water_spiders, file = "plots/ms_plots_tables/concentration_water_spiders.jpg", width = 5, height = 5)
+# concentration_water_spiders = post_mus %>% 
+#   ggplot(aes(x = Water, y = Tetragnathidae, color = pfas_type)) + 
+#   geom_point(shape = 20, alpha = 0.5, size = 0.2) +
+#   # facet_wrap(~pfas_type) +
+#   scale_color_custom() +
+#   scale_y_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+#                 labels = c("0.00001", "0.001", "0.1", "10"),limits = c(0.00001, 20)) +
+#   scale_x_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+#                 labels = c("0.00001", "0.001", "0.1", "10"), limits = c(0.00001, 20)) +
+#   guides(color = "none",
+#          fill = "none") +
+#   geom_abline(linetype = "dashed") +
+#   geom_label(data = cons_labels, aes(label = pfas_type, 
+#                                      y = Spiders,
+#                                      fill = pfas_type), 
+#              color = "white", size = 2.3) +
+#   scale_fill_custom() +
+#   labs(x = "Concentration in Water (ppb)",
+#        y = "Concentration in Spiders (ppb)")
+# 
+# 
+# ggsave(concentration_water_spiders, file = "plots/ms_plots_tables/concentration_water_spiders.jpg", width = 5, height = 5)
 
 
 cons_water_biofilm = post_mus %>% 
@@ -1682,6 +1677,41 @@ cons_biofilm_larvae = post_mus %>%
   labs(x = "Concentration in Biofilm (ppb)",
        y = "Concentration in Larvae (ppb)")
 
+cons_seston_larvae = post_mus %>% 
+  ggplot(aes(x = Seston, y = Larval, color = pfas_type)) + 
+  geom_point(shape = 20, alpha = 0.5, size = 0.2) +
+  # facet_wrap(~pfas_type) +
+  scale_color_custom() +
+  scale_y_log10(breaks = c(0.0001, 0.001,0.01, 0.1, 1, 10, 100),
+                labels = c("0.0001", "0.001", "0.01", "0.1", "1", "10", "100"),  limits = c(0.0001, 100)) +
+  scale_x_log10(breaks = c(0.0001, 0.001,0.01, 0.1, 1, 10, 100),
+                labels = c("0.0001", "0.001", "0.01", "0.1", "1", "10", "100"),  limits = c(0.0001, 100)) +
+  guides(color = "none",
+         fill = "none") +
+  geom_abline(linetype = "dashed") +
+  geom_label(data = cons_labels, aes(label = pfas_type, fill = pfas_type), 
+             color = "white", size = 2.3) +
+  scale_fill_custom() +
+  labs(x = "Concentration in Seston (ppb)",
+       y = "Concentration in Larvae (ppb)")
+
+cons_detritus_larvae = post_mus %>% 
+  ggplot(aes(x = Detritus, y = Larval, color = pfas_type)) + 
+  geom_point(shape = 20, alpha = 0.5, size = 0.2) +
+  # facet_wrap(~pfas_type) +
+  scale_color_custom() +
+  scale_y_log10(breaks = c(0.0001, 0.001,0.01, 0.1, 1, 10, 100),
+                labels = c("0.0001", "0.001", "0.01", "0.1", "1", "10", "100"),  limits = c(0.0001, 100)) +
+  scale_x_log10(breaks = c(0.0001, 0.001,0.01, 0.1, 1, 10, 100),
+                labels = c("0.0001", "0.001", "0.01", "0.1", "1", "10", "100"),  limits = c(0.0001, 100)) +
+  guides(color = "none",
+         fill = "none") +
+  geom_abline(linetype = "dashed") +
+  geom_label(data = cons_labels, aes(label = pfas_type, fill = pfas_type), 
+             color = "white", size = 2.3) +
+  scale_fill_custom() +
+  labs(x = "Concentration in Detritus (ppb)",
+       y = "Concentration in Larvae (ppb)")
 
 # cons detect by site
 post_mus_site = posts_concentrations %>% 
@@ -1718,10 +1748,56 @@ cons_site = post_mus_site %>%
        y = "Concentration in Larval Insects (ppb)")
 
 
+concentration_seston_larvae = post_mus %>% 
+  ggplot(aes(x = Seston, y = Larval, color = pfas_type)) + 
+  geom_point(shape = 20, alpha = 0.5, size = 0.2) +
+  # facet_wrap(~pfas_type) +
+  scale_color_custom() +
+  scale_y_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"),limits = c(0.00001, 20)) +
+  scale_x_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"), limits = c(0.00001, 20)) +
+  guides(color = "none",
+         fill = "none") +
+  geom_abline(linetype = "dashed") +
+  geom_label(data = cons_labels, aes(label = pfas_type, fill = pfas_type), 
+             color = "white", size = 2.3) +
+  scale_fill_custom() +
+  labs(x = "Concentration in Seston (ppb)",
+       y = "Concentration in Larvae (ppb)")
+
+
+ggsave(concentration_seston_larvae, file = "plots/ms_plots_tables/concentration_seston_larvae.jpg", width = 5, height = 5)
+
+
+concentration_detritus_larvae = post_mus %>% 
+  ggplot(aes(x = Detritus, y = Larval, color = pfas_type)) + 
+  geom_point(shape = 20, alpha = 0.5, size = 0.2) +
+  # facet_wrap(~pfas_type) +
+  scale_color_custom() +
+  scale_y_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"),limits = c(0.00001, 20)) +
+  scale_x_log10(breaks = c(0.00001, 0.001, 0.1, 10),
+                labels = c("0.00001", "0.001", "0.1", "10"), limits = c(0.00001, 20)) +
+  guides(color = "none",
+         fill = "none") +
+  geom_abline(linetype = "dashed") +
+  geom_label(data = cons_labels, aes(label = pfas_type, fill = pfas_type), 
+             color = "white", size = 2.3) +
+  scale_fill_custom() +
+  labs(x = "Concentration in Detritus (ppb)",
+       y = "Concentration in Larvae (ppb)")
+
+
+ggsave(concentration_detritus_larvae, 
+       file = "plots/ms_plots_tables/concentration_detritus_larvae.jpg", width = 5, height = 5)
+
+
 library(cowplot)
 cons_water_larvae = plot_grid(cons_average, cons_site, ncol = 1)
 
 ggsave(cons_water_larvae, file = "plots/cons_water_larvae.jpg", width = 6.5, height = 8)
+
 
 
 # cons_detect larvae to emerger
@@ -1872,6 +1948,16 @@ fig4_combined_cons = plot_grid(fig4a_cons, fig4b_cons, fig4c_cons, fig4d_cons, n
 
 ggsave(fig4_combined_cons, file = "plots/ms_plots_tables/fig4_combined_cons.jpg", width = 8, height = 8,
        dpi = 400)
+
+# for reviewer response - compare biofilm/larvae to seston/larvae and detritus/larvae
+fig4a_cons_rev = cons_biofilm_larvae + labs(subtitle = "a)")
+fig4b_cons_rev = cons_seston_larvae + labs(subtitle = "b)")
+fig4c_cons_rev = cons_detritus_larvae + labs(subtitle = "c)")
+
+fig4_rev = plot_grid(fig4a_cons_rev, fig4b_cons_rev, fig4c_cons_rev)
+
+ggsave(fig4_rev, file = "plots/temporary/fig4_rev.jpg", width = 6.5,
+       height = 7)
 
 # figx_TMF_sum ------------------------------------------------------------
 
@@ -2069,7 +2155,7 @@ tmf_iso_slopes_bycompound = brm_tmf_iso_notadjustedformetamorphosis$data2 %>%
 tmf_slopes_bycompound = tmf_iso_slopes_bycompound %>% 
   group_by(pfas_type) %>% 
   median_qi(slope) %>% 
-  left_join(pfas_orders) %>% 
+  left_join(pfas_names) %>% 
   bind_rows(tmf_sum_slope_summary %>% mutate(pfas_order = 0)) %>% 
   make_summary_table(, center = "slope") %>% 
   arrange(pfas_order)
@@ -2261,8 +2347,11 @@ isotope_biplot_summary = iso_posts_raw %>%
 
 write_csv(isotope_biplot_summary, file = "plots/ms_plots_tables/isotope_biplot_summary.csv")
 
+
 # iso biplot averaged over sites
-iso_posts_siteaverage = brm_isotopes$data2 %>% 
+brm_isotopes_notfiltered = readRDS("models/brm_isotopes_notfiltered.rds")
+
+iso_posts_siteaverage = brm_isotopes_notfiltered$data2 %>% 
   distinct(site, sample_type, mean_15n, mean_13c) %>% 
   add_epred_draws(brm_isotopes_notfiltered) %>% 
   ungroup %>% 
