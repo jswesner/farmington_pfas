@@ -1297,15 +1297,15 @@ post_hus = posts_concentrations %>%
   left_join(pfas_names) %>%
   group_by(type, pfas_type, .draw) %>% 
   reframe(hu = mean(hu)) %>%
-  pivot_wider(names_from = type, values_from = hu) %>% 
-  mutate(Adult = Emergent)
+  pivot_wider(names_from = type, values_from = hu) 
 
 prob_labels = post_hus %>% 
   group_by(pfas_type) %>% 
-  reframe(Water = mean(Water),
-          Larval = mean(Larval),
-          Biofilm = mean(Biofilm),
-          Tetragnathidae = mean(Tetragnathidae))
+  reframe(Water = median(Water),
+          Larval = median(Larval),
+          Biofilm = median(Biofilm),
+          Seston = median(Seston),
+          Detritus = median(Detritus))
 
 prob_detect_average = post_hus %>% 
   ggplot(aes(x = 1 - Water, y = 1 - Larval, color = pfas_type)) + 
@@ -1374,6 +1374,38 @@ prob_detect_biofilm_larvae = post_hus %>%
   labs(x = "P(Detect) in Biofilm",
        y = "P(Detect) in Larvae")
 
+prob_detect_seston_larvae = post_hus %>% 
+  ggplot(aes(x = 1 - Seston, y = 1 - Larval, color = pfas_type)) + 
+  geom_point(shape = 20, alpha = 0.5, size = 0.2) +
+  # facet_wrap(~pfas_type) +
+  scale_color_custom() +
+  # scale_y_log10() +
+  # scale_x_log10() +
+  guides(color = "none",
+         fill = "none") +
+  geom_abline(linetype = "dashed") +
+  geom_label(data = prob_labels, aes(label = pfas_type, fill = pfas_type), 
+             color = "white", size = 2.3) +
+  scale_fill_custom() +
+  labs(x = "P(Detect) in Seston",
+       y = "P(Detect) in Larvae")
+
+prob_detect_detritus_larvae = post_hus %>% 
+  ggplot(aes(x = 1 - Detritus, y = 1 - Larval, color = pfas_type)) + 
+  geom_point(shape = 20, alpha = 0.5, size = 0.2) +
+  # facet_wrap(~pfas_type) +
+  scale_color_custom() +
+  # scale_y_log10() +
+  # scale_x_log10() +
+  guides(color = "none",
+         fill = "none") +
+  geom_abline(linetype = "dashed") +
+  geom_label(data = prob_labels, aes(label = pfas_type, fill = pfas_type), 
+             color = "white", size = 2.3) +
+  scale_fill_custom() +
+  labs(x = "P(Detect) in Detritus",
+       y = "P(Detect) in Larvae")
+
 # prob detect by site
 post_hus_site = posts_concentrations %>% 
   ungroup %>% 
@@ -1413,6 +1445,11 @@ prob_detect_water_larvae = plot_grid(prob_detect_average, prob_detect_site, ncol
 
 ggsave(prob_detect_water_larvae, file = "plots/prob_detect_water_larvae.jpg", width = 6.5, height = 8)
 
+
+prob_detect_rev = plot_grid(prob_detect_biofilm_larvae, prob_detect_seston_larvae, prob_detect_detritus_larvae)
+
+ggsave(prob_detect_rev, file = "plots/temporary/prob_detect_rev.jpg", width = 6.5,
+       height = 7)
 
 # prob_detect larvae to emerger
 
